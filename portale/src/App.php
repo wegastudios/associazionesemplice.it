@@ -18,8 +18,22 @@ final class App {
 		$this->auth    = $auth;
 	}
 
+	/** Pagine pubbliche di sola lettura: la HEAD segue il GET (stesso codice e stesse intestazioni, il server web toglie il corpo). */
+	private const HEAD_LIKE_GET = array( '/', '/plugin', '/piani', '/prezzi', '/funzioni', '/domande', '/prova', '/confronto', '/confronto-demo', '/free', '/acquista', '/accedi', '/account', '/robots.txt', '/sitemap.xml', '/api/piani', '/api/stato' );
+
+	/**
+	 * Solo per le pagine pubbliche qui sopra, le sezioni /saas e /wordpress e le pagine legali: ogni altra HEAD resta com'era. Scarichi,
+	 * API delle licenze, uscita e ritorno dai pagamenti non devono mai partire da una HEAD (leggerebbero il file, conterebbero uno scarico).
+	 */
+	private static function headLikeGet( string $path ): bool {
+		return in_array( $path, self::HEAD_LIKE_GET, true ) || null !== Sections::view( $path ) || isset( Legal::PAGES[ ltrim( $path, '/' ) ] );
+	}
+
 	public function run( string $method, string $path ): void {
 		$path = '/' . trim( $path, '/' );
+		if ( 'HEAD' === $method && self::headLikeGet( $path ) ) {
+			$method = 'GET';
+		}
 		try {
 			if ( 'POST' === $method && 0 === strpos( $path, '/webhook/' ) ) {
 				$this->webhook( $path );
@@ -40,6 +54,14 @@ final class App {
 					};
 					$this->finish();
 				}
+				return;
+			}
+			if ( 'POST' === $method && '/api/saas/v1/usage' === $path ) {
+				// Consumi firmati del SaaS (contratto §4.1): senza sessione né CSRF, vale la firma.
+				list( $code, $out ) = Usage::accept( $this->db, (string) file_get_contents( 'php://input', false, null, 0, Usage::MAX_BODY ) );
+				http_response_code( $code );
+				header( 'Content-Type: application/json; charset=utf-8' );
+				echo json_encode( $out );
 				return;
 			}
 			if ( 0 === strpos( $path, '/api/license/' ) || 0 === strpos( $path, '/api/plugin/' ) || '/.well-known/jwks.json' === $path ) {
@@ -173,6 +195,14 @@ final class App {
 			// Stessa tabella di /confronto, senza pagina intorno: la legge la demo e la mostra nella sua home.
 			$fragment = true;
 			View::headers( 'text/html; charset=utf-8' );
+			// La demo può stare su un altro host (demo.associazionesemplice.it) e la legge con una richiesta tra siti: si consente solo quell'origine esatta,
+			// solo in lettura (GET) e senza credenziali (niente Allow-Credentials, niente caratteri jolly).
+			header( 'Vary: Origin' );
+			$cors = Demo::corsOrigin();
+			if ( '' !== $cors && $cors === (string) ( $_SERVER['HTTP_ORIGIN'] ?? '' ) ) {
+				header( 'Access-Control-Allow-Origin: ' . $cors );
+				header( 'Access-Control-Allow-Methods: GET' );
+			}
 			require __DIR__ . '/../views/confronto.php';
 		} elseif ( '/saas/acquista' === $path ) {
 			$this->saasBuy( $get );

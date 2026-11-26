@@ -32,6 +32,9 @@ final class RateLimit {
 			$db->run( 'INSERT INTO rate_limits (bucket, hour, n) VALUES (?,?,1)', array( $bucket, $hour ) );
 			return $max >= 1;
 		} catch ( \PDOException $e ) { // un'altra richiesta l'ha creato un attimo prima
+			if ( ! Db::isDuplicate( $e ) ) {
+				throw $e; // permessi o tabella: non è «creato da un'altra richiesta», e non va scambiato per limite raggiunto
+			}
 			return 1 === $db->run( $up, array( $bucket, $hour, $max ) )->rowCount();
 		}
 	}

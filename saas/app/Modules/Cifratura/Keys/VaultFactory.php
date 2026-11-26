@@ -50,6 +50,20 @@ final readonly class VaultFactory
         return new LocalKeyVault($this->localMasterKey());
     }
 
+    /** Il custode della chiave locale VECCHIA (SAAS_MASTER_KEY_OLD), solo per il cambio tra due chiavi locali. */
+    public function localOld(): LocalKeyVault
+    {
+        $old = self::base64($this->config->get('saas.crypto.master_key_old'), 'SAAS_MASTER_KEY_OLD', 32);
+        if (hash_equals(LocalKeyVault::TEST_MASTER_KEY, base64_encode($old)) && ! in_array($this->config->get('app.env'), ['local', 'testing'], true)) {
+            throw new RuntimeException('SAAS_MASTER_KEY_OLD è la chiave di prova: non è quella in uso.');
+        }
+        if (hash_equals($old, $this->localMasterKey())) {
+            throw new RuntimeException('SAAS_MASTER_KEY_OLD è uguale a SAAS_MASTER_KEY: servono due chiavi diverse.');
+        }
+
+        return new LocalKeyVault($old);
+    }
+
     /** La chiave principale locale, se configurata e valida (per la copia di recupero). */
     public function localMasterKey(): string
     {

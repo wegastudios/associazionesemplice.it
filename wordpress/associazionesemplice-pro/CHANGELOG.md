@@ -2,6 +2,27 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.27 – 2026-11-26
+- Nuovo: con gli AssoCrediti (o il nome scelto per la moneta) si pagano anche i mesi dei propri ospiti e il primo mese di un altro socio che si è iscritto a un corso, quando lo paga chi iscrive.
+Da fare dopo l'aggiornamento:
+- Aggiorna anche Associazione Semplice alla 1.3.41, così la moneta funziona anche per gli altri soci.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+## 1.3.26 – 2026-11-26
+- Nuovo: la moneta interna ha il nome che sceglie l'associazione (di partenza AssoCredito / AssoCrediti), in tutte le pagine, le email e le ricevute.
+- Nuovo: la mensilità di un corso si può pagare per intero in moneta. La paga il socio dall'area soci, il genitore per il figlio minorenne oppure la segreteria dalla scheda del corso. Annullamenti e cancellazioni restituiscono la moneta con le regole degli euro.
+- Altro: gli avvisi email al socio usano il nome della moneta.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+## 1.3.25 – 2026-11-25
+- Nuovo: pagamenti online, ricevute e cassa riconoscono chi paga le prenotazioni fatte per altri.
+- Altro: richiede Associazione Semplice 1.3.39 o successiva.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+## 1.3.24 – 2026-11-24
+- Altro: con una versione meno recente di Associazione Semplice il Pro si sospende e avvisa, invece di dare errore.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
 ## 1.3.23 – 2026-11-23
 - Ottimizzazione: le stesse migliorie di velocità anche per risorse e prenotazioni; aggiornamento del database a tappe.
 Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog

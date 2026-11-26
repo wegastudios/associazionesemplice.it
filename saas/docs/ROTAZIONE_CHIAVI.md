@@ -8,7 +8,7 @@ le regole sulle chiavi in [DATABASE.md](DATABASE.md) §5; il servizio in [../key
 
 | Chiave | Dove sta | Cosa protegge | Si ruota? |
 |---|---|---|---|
-| **Chiave principale** | `config.ini` del servizio chiavi e copia di recupero offline | avvolge le chiavi dati (`core.org_keys.wrapped_key`) | sì, §3 |
+| **Chiave principale** | `config.ini` del servizio chiavi (o `SAAS_MASTER_KEY` se locale) e copia di recupero offline | avvolge le chiavi dati (`core.org_keys.wrapped_key`) | sì, §3 |
 | **Coppia di firma SaaS ↔ servizio** | privata nell'ambiente del SaaS, pubblica in `config.ini` del servizio | chi può chiedere al servizio di aprire le chiavi | sì, §4 |
 | **Coppia dei backup** | pubblica nel SaaS (`SAAS_BACKUP_PUBLIC_KEY`), privata offline e sullo staging | cifratura dei dump | sì, §5 |
 | **Chiave dati dell'associazione** | in `core.org_keys`, avvolta con la chiave principale | campi cifrati, file, impronte di ricerca, sigillo del registro | **non ancora**, §6 |
@@ -26,10 +26,75 @@ Ogni rotazione si prova prima sullo staging e si fa in una finestra con `php art
 
 ## 3. Chiave principale
 
-Con i comandi attuali il passaggio è **servizio vecchio → chiave locale provvisoria → servizio nuovo**: per il tempo
-della finestra la chiave locale sta nel file d'ambiente e la piattaforma è «di prova» (`RILASCIO.md`).
+Le chiavi dati non cambiano (§6): si riavvolgono con una chiave principale nuova. Due casi, entrambi con comandi che
+esistono. Valgono prima e dopo il lancio: sono operazioni in finestra, con il gestionale in manutenzione.
 
-1. Copia di recupero attuale scaricata offline in due posti (`saas:keys:recovery`, poi `saas:keys:recovery-check`).
+### 3.1 Da una chiave locale a un'altra chiave locale (`SAAS_KEY_VAULT=local`)
+
+La chiave vecchia si legge **solo** dal file d'ambiente (`SAAS_MASTER_KEY_OLD`): il comando non ha argomenti né
+opzioni per le chiavi, perché le righe di comando si vedono nell'elenco dei processi. Nessun comando stampa chiavi.
+
+1. Copia di recupero attuale (con la chiave vecchia) scaricata offline in due posti: `saas:keys:recovery`, poi
+   `saas:keys:recovery-check` sullo stesso file. È la via di ritorno anche se il file d'ambiente va perso.
+2. Prova generale sullo staging o sulla demo con lo stesso procedimento.
+3. `php artisan saas:keys:generate`: la chiave nuova, da copiare nel file d'ambiente senza passare da chat o email.
+   Nel file d'ambiente: `SAAS_MASTER_KEY_OLD` = il valore che oggi è in `SAAS_MASTER_KEY`, poi `SAAS_MASTER_KEY` =
+   la chiave nuova. `php artisan config:cache`.
+4. `php artisan down` e, subito dopo, **fermare tutto ciò che gira in background** (vedi «Fermare lo sfondo» sotto).
+   `down` ferma solo le richieste web: i lavori pianificati e i lavoratori di coda già avviati possono ancora
+   leggere la configurazione vecchia o la cache delle chiavi.
+5. `php artisan saas:keys:rewrap local-nuova --dry-run`. Prova tutto senza scrivere: controlla che ogni chiave dati si
+   apra con la vecchia o con la nuova e che, riavvolta, si riapra uguale. Deve dire 0 associazioni non riuscite. Se
+   dice «chiavi che non si aprono né con SAAS_MASTER_KEY_OLD né con SAAS_MASTER_KEY» non ha scritto nulla: la chiave
+   vecchia nel file d'ambiente è sbagliata (o `config:cache` non è stato rifatto), si corregge e si ripete.
+6. `php artisan saas:keys:rewrap local-nuova` (chiede conferma; `--force` per saltarla). Per associazione, in
+   transazione: apre con la vecchia, riavvolge con la nuova, controlla, solo dopo scrive. Una riga `keys.rewrap` con
+   `to = local-nuova` nel registro della piattaforma.
+7. Di nuovo `saas:keys:rewrap local-nuova`: deve dire 0 riavvolte (le righe già a posto non si toccano).
+8. **Solo ora** si riaccende lo schedulatore (la riga di cron tolta al punto 4), poi `saas:health`, un accesso di prova a
+   un'associazione che legga un campo cifrato, `php artisan up`. Il riavvio dei lavoratori è automatico: ripartono dal
+   cron con la configurazione nuova (dopo `config:cache`).
+9. Nuova copia di recupero con la chiave nuova (`saas:keys:recovery`) e sua verifica (`saas:keys:recovery-check`).
+10. **La chiave vecchia resta offline per almeno 30 giorni, ma fuori dal file d'ambiente**: i backup fatti prima del
+    passaggio hanno le chiavi avvolte con lei. Si toglie `SAAS_MASTER_KEY_OLD` dal file d'ambiente (`config:cache`)
+    quando i controlli sono fatti, non si lascia lì «per sicurezza». Passati i 30 giorni si distrugge la copia di
+    recupero vecchia.
+
+**Fermare lo sfondo** (punto 4, e di nuovo per il ritorno e per la ripresa). Prima di qualsiasi `rewrap`, con il
+gestionale già in `down`:
+
+1. Spegnere lo schedulatore per tutta la durata: togliere (o commentare) la riga di cron di `schedule:run`
+   (`RILASCIO.md`). Da qui non parte più nessun lavoro pianificato né nuovo lavoratore di coda.
+2. `php artisan queue:restart`: i lavoratori già avviati finiscono il lavoro in corso e poi si fermano. **Attendere** che
+   non ce ne siano più (nessun processo `queue:work` in esecuzione, righe in lavorazione di `jobs` assenti o ferme)
+   prima di proseguire.
+3. Svuotare la cache delle chiavi sbloccate: sta in APCu dei processi web (5 minuti al massimo, mai su disco) e dalla
+   riga di comando non si vede né si cancella. Riavviare PHP dal pannello dell'hosting (o attendere almeno 5 minuti
+   dopo `down`, quando nessuna richiesta la rinnova). Poi `config:cache`, se non già fatto dopo aver cambiato le chiavi.
+4. Solo dopo, il `rewrap` (prova, vero, ripetizione). Lo schedulatore si riaccende **dopo** la ripetizione a 0
+   riavvolte e prima di `up`, sempre, anche dopo il ritorno.
+
+**Ritorno** (la chiave nuova non va: errori nei controlli, chiave sbagliata copiata): stesso comando con le due chiavi
+scambiate nel file d'ambiente, con le stesse protezioni (`down`, «Fermare lo sfondo» con lo schedulatore spento).
+`SAAS_MASTER_KEY` = la chiave vecchia, `SAAS_MASTER_KEY_OLD` = la nuova, `config:cache`,
+`saas:keys:rewrap local-nuova --dry-run`, poi senza `--dry-run`, poi di nuovo (0 riavvolte), e solo allora lo
+schedulatore torna acceso e `up`. Le chiavi dati delle associazioni
+non si ricreano: cambia solo come sono avvolte. Finché la vecchia non è distrutta, il ritorno è sempre
+possibile; la copia di recupero del punto 1 lo copre anche se il file d'ambiente è perso.
+
+Se il comando si interrompe a metà (errore di rete al database, processo ucciso) lo schedulatore **resta spento** e il
+gestionale in `down`: si controlla che «Fermare lo sfondo» sia ancora vero (nessun lavoratore ripartito) e si
+ripete il comando. Non c'è nulla da disfare: ogni
+associazione è una transazione, e ripetendo il comando si riavvolgono solo quelle rimaste (le altre risultano «già a
+posto»). Se una chiave non si apre con nessuna delle due, il comando non scrive nulla finché non si è capito perché.
+
+### 3.2 Da un servizio chiavi a un altro servizio chiavi
+
+Non c'è un comando diretto: il passaggio è **servizio vecchio → chiave locale provvisoria → servizio nuovo**, e per il
+tempo della finestra la chiave locale sta nel file d'ambiente (la piattaforma è «di prova», `RILASCIO.md`).
+
+1. Copia di recupero attuale scaricata offline in due posti (`saas:keys:recovery --con-servizio`, poi
+   `saas:keys:recovery-check`).
 2. Servizio nuovo pronto (account o cartella nuova, `config.ini` con una chiave principale **nuova**, la stessa
    `client_public_key`, gli indirizzi ammessi). Il vecchio servizio resta acceso.
 3. `php artisan saas:keys:generate`: la chiave locale provvisoria va in `SAAS_MASTER_KEY` (non è quella del servizio).
@@ -41,12 +106,10 @@ della finestra la chiave locale sta nel file d'ambiente e la piattaforma è «di
 7. Tolta `SAAS_MASTER_KEY` dal file d'ambiente, `config:cache`. Nuova copia di recupero con la chiave del servizio
    nuovo e sua verifica.
 8. **La chiave principale vecchia resta offline per almeno 30 giorni**: i backup fatti prima del passaggio hanno le chiavi
-   avvolte con lei (come per il passaggio dalla chiave locale). Passati i 30 giorni, si distruggono la copia di recupero
-   vecchia e il `config.ini` del servizio vecchio.
+   avvolte con lei. Passati i 30 giorni, si distruggono la copia di recupero vecchia e il `config.ini` del servizio vecchio.
 
-Limite di oggi: non c'è un comando diretto «servizio vecchio → servizio nuovo»; la chiave locale provvisoria nel file
-d'ambiente è il prezzo. Un comando che apre dal vecchio e avvolge sul nuovo senza passare dal file d'ambiente è
-una modifica da progettare (`KeyMigration::rewrap` prende già due custodi qualunque).
+Il ritorno al servizio vecchio, finché è acceso, è lo stesso percorso al contrario (`rewrap local`, poi `rewrap remote`
+con l'indirizzo vecchio).
 
 ## 4. Coppia di firma SaaS ↔ servizio
 

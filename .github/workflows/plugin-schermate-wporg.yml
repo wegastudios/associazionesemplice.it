@@ -1,0 +1,90 @@
+name: Plugin screenshots for WordPress.org
+
+# Le sei schermate della pagina WordPress.org (wordpress/wporg-assets/screenshot-1..6.png), prese dal SOLO plugin gratuito con dati finti.
+# Gira solo a mano (workflow_dispatch), mai a ogni push: si lancia a ogni versione nuova o quando cambia l'aspetto dei pannelli. Le PNG stanno nell'artefatto «schermate-wporg».
+
+on:
+  workflow_dispatch:
+  pull_request: # solo quando la PR tocca questi file (finché il flusso non è in main, a mano non si può lanciare)
+    paths:
+      - ".github/workflows/plugin-schermate-wporg.yml"
+      - ".github/scripts/schermate-wporg.cjs"
+      - ".github/scripts/prepara-wporg.php"
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    name: Schermate per WordPress.org (solo gratuito)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the packages and start WordPress (free only)
+        shell: bash
+        run: |
+          bash wordpress/build.sh wordpress/dist
+          cd wordpress/dist
+          cat > .wp-env.json <<'JSON'
+          {
+            "phpVersion": "8.1",
+            "plugins": [
+              "./free/associazionesemplice"
+            ],
+            "mappings": {
+              "wp-content/demo-seed": "../../demo",
+              "wp-content/sandbox-scripts": "../../.github/scripts"
+            },
+            "config": { "WP_DEBUG": true, "WP_DEBUG_DISPLAY": false, "WP_DEBUG_LOG": true }
+          }
+          JSON
+          npx --yes @wordpress/env start
+
+      - name: Example data (free only)
+        continue-on-error: true
+        shell: bash
+        working-directory: wordpress/dist
+        run: npx --yes @wordpress/env run cli wp eval-file wp-content/sandbox-scripts/prepara-wporg.php
+
+      - name: Italian admin and site name
+        continue-on-error: true
+        shell: bash
+        working-directory: wordpress/dist
+        run: |
+          npx --yes @wordpress/env run cli wp language core install it_IT --activate
+          npx --yes @wordpress/env run cli wp option update blogname "Associazione Demo APS"
+
+      - name: Install Playwright (Chromium)
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: Take the screenshots
+        shell: bash
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: node .github/scripts/schermate-wporg.cjs http://localhost:8888 wporg
+
+      - name: Outcome
+        if: always()
+        shell: bash
+        run: |
+          [ -f wporg/esito.md ] && cat wporg/esito.md >> "$GITHUB_STEP_SUMMARY" || echo "Nessun esito." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schermate-wporg
+          path: wporg/
+          if-no-files-found: ignore

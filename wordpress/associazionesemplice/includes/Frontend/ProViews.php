@@ -114,8 +114,8 @@ final class ProViews {
 		$extra = array(
 			'ricevute'        => array( 'receipts', 'Le mie ricevute e attestazioni (PDF)', 'pagamenti' ),
 			'risorse'         => array( 'resources', 'Risorse prenotabili: campi, sale, posti (soci)', 'mie_attivita' ),
-			'crediti'         => array( 'credits', 'I miei crediti: saldo, ricarica e movimenti (soci)', 'risorse' ),
-			'incasso_crediti' => array( 'credits', 'Incasso crediti dal vivo con QR (staff)', 'crediti' ),
+			'crediti'         => array( 'credits', 'Saldo, ricarica e movimenti della moneta interna (soci)', 'risorse' ),
+			'incasso_crediti' => array( 'credits', 'Incasso dal vivo nella moneta interna con QR (staff)', 'crediti' ),
 			'app'             => array( 'pwa', 'App e notifiche (installazione e notifiche sul telefono)', 'prossimi_eventi' ),
 			'cinquepermille'  => array( 'fivepm', '5 per mille (messaggio pubblico con il codice fiscale)', 'app' ),
 		);

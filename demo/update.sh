@@ -8,8 +8,9 @@ if [ -z "${ASEM_DEMO_LOCKED:-}" ]; then
 	exec 8>"$HOME/demo-provision/.demo.lock"
 	flock -w "${ASEM_LOCK_WAIT:-600}" 8 || { echo "Un azzeramento della demo è ancora in corso: non aggiorno ora (riprova fra qualche minuto)." >&2; exit 5; }
 fi
-cd "$HOME/public_html/demo"
-R="$HOME/portale/data/releases"
+[ -f "$HOME/demo-provision/demo.env" ] && . "$HOME/demo-provision/demo.env" # facoltativo: DEMO_DIR, DEMO_URL, RELEASES_DIR (senza il file valgono i percorsi di oggi)
+cd "${DEMO_DIR:-$HOME/public_html/demo}"
+R="${RELEASES_DIR:-$HOME/portale/data/releases}"
 latest() { ls "$R/$1"/*.zip 2>/dev/null | sed 's|.*/||; s|\.zip$||' | sort -V | tail -1; }
 for p in free:associazionesemplice pro:associazionesemplice-pro; do
 	prod="${p%%:*}"; slug="${p##*:}"; v="$(latest "$prod")"

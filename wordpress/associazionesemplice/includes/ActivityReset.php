@@ -141,8 +141,8 @@ final class ActivityReset {
 	 *
 	 * @return array{today:string,now:string,sessions:array<int,array{date:string,start:string}>,held:string[]}
 	 */
-	private static function fruit_context( array $a ): array {
-		$today = current_time( 'Y-m-d' );
+	public static function fruit_context( array $a ): array {
+		$today = Db::today(); // come il resto dei corsi (nelle prove, la data finta)
 		$ctx   = array( 'today' => $today, 'now' => current_time( 'H:i' ), 'sessions' => array(), 'held' => array() );
 		$db    = self::db();
 		$rows  = $db->get_results( $db->prepare( 'SELECT id, session_date, start_time FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d AND cancelled_at IS NULL', (int) $a['id'] ), ARRAY_A ) ?: array();
@@ -164,23 +164,8 @@ final class ActivityReset {
 	}
 
 	/** Date delle lezioni di un corso tra due giorni, dal calendario settimanale meno quelle annullate e con quelle spostate. @return string[] */
-	private static function course_dates( array $a, string $from, string $to ): array {
-		$dates = array();
-		foreach ( ActivityService::lessons( $a ) as $s ) {
-			if ( 'single' === $s['type'] ) {
-				$dates[] = (string) $s['date'];
-				continue;
-			}
-			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
-			if ( $lo > $hi ) {
-				continue;
-			}
-			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-				$dates[] = $d;
-			}
-		}
-		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to );
+	public static function course_dates( array $a, string $from, string $to ): array {
+		return CourseCalendar::dates( $a, $from, $to );
 	}
 
 	/**
@@ -199,10 +184,20 @@ final class ActivityReset {
 		if ( (int) ( $m['session_id'] ?? 0 ) || empty( $ctx['course'] ) || ! preg_match( '/^\d{4}-\d{2}$/', $month ) ) {
 			return 0;
 		}
-		$total = count( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ) );
+		$since = $month . '-01';
+		if ( (int) ( $m['person_id'] ?? 0 ) ) { // chi ha fatto la prova ha pagato solo le lezioni da quel giorno: la parte non fruita si conta su quelle
+			$from  = (string) self::db()->get_var( self::db()->prepare( 'SELECT trial_from FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND person_id = %d AND start_month <= %s', (int) $ctx['course']['id'], (int) $m['person_id'], $month ) );
+			$since = '' !== $from && 0 === strpos( $from, $month ) ? $from : $since;
+		}
+		$total = count( array_filter( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ), function ( $d ) use ( $since ) {
+			return $since === substr( $since, 0, 7 ) . '-01' || (string) $d >= $since;
+		} ) );
+		if ( CourseMonths::applies( $ctx['course'] ) ) { // a lezioni: si è pagato per le lezioni fissate del mese
+			$total = CourseMonths::count_from( CourseMonths::fixed( (int) $ctx['course']['id'], $month ) ?? CourseMonths::live( $ctx['course'], $month ), $since );
+		}
 		$held  = 0;
 		foreach ( (array) $ctx['held'] as $d ) {
-			if ( 0 === strpos( (string) $d, $month ) && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
+			if ( 0 === strpos( (string) $d, $month ) && (string) $d >= $since && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
 				$held++;
 			}
 		}
@@ -243,6 +238,19 @@ final class ActivityReset {
 	/** Incasso già restituito (o annullato) con la cancellazione di una singola iscrizione. */
 	private static function is_settled( array $m ): bool {
 		return 0 === strpos( (string) $m['description'], '[Iscrizione cancellata]' );
+	}
+
+	/** A chi si restituisce un incasso: a chi partecipava, oppure a chi ha prenotato per lui se è lui che ha pagato. */
+	private static function refund_person( array $m ): int {
+		$pid   = (int) ( $m['person_id'] ?? 0 );
+		$payer = (int) ( $m['payer_person_id'] ?? 0 );
+		if ( $pid && $payer && ! empty( $m['session_id'] ) ) {
+			$b = Plugin::activities()->booking( (int) $m['session_id'], $pid );
+			if ( $b && $payer === ActivityService::debtor_id( $b ) ) {
+				return $payer;
+			}
+		}
+		return $pid;
 	}
 
 	/** Uscita di restituzione registrata dalla cancellazione di una singola iscrizione. */
@@ -296,6 +304,7 @@ final class ActivityReset {
 		$db   = self::db();
 		$in   = $session_ids ? implode( ',', array_map( 'intval', $session_ids ) ) : '0';
 		$ids  = array_map( 'intval', $db->get_col( 'SELECT DISTINCT person_id FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in) AND status = 'booked'" ) );
+		$ids  = array_merge( $ids, array_map( 'intval', $db->get_col( 'SELECT DISTINCT booked_by FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in) AND status = 'booked' AND booked_by IS NOT NULL" ) ) ); // anche chi ha prenotato per altri: il versamento è suo // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- id interi
 		$ids  = array_merge( $ids, array_map( 'intval', $db->get_col( $db->prepare( 'SELECT DISTINCT person_id FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d AND (end_month IS NULL OR end_month >= %s)', $activity_id, gmdate( 'Y-m' ) ) ) ) );
 		$out  = array();
 		foreach ( array_unique( $ids ) as $pid ) {
@@ -308,6 +317,11 @@ final class ActivityReset {
 	}
 
 	/** Categoria per le restituzioni: si crea la prima volta (è un costo dell'attività). */
+	/** La voce «Restituzione quote» (creata se manca). */
+	public static function refund_category_id(): int {
+		return self::refund_category();
+	}
+
 	private static function refund_category(): int {
 		$db  = self::db();
 		$tbl = Db::t( 'categories' );
@@ -355,7 +369,7 @@ final class ActivityReset {
 							if ( $part > 0 ) { // mese in parte svolto: si rende solo la quota delle lezioni non tenute
 								$d = array(
 									'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => $part,
-									'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (contributo non usato)', 0, 255 ),
+									'person_id' => self::refund_person( $m ), 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (contributo non usato)', 0, 255 ),
 								);
 								if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
 									$d['vat_rate'] = (int) $m['vat_rate'];
@@ -371,7 +385,7 @@ final class ActivityReset {
 							}
 							$d = array(
 								'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
-								'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
+								'person_id' => self::refund_person( $m ), 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
 							);
 							if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
 								$d['vat_rate'] = (int) $m['vat_rate']; // la restituzione storna anche l'IVA contenuta
@@ -410,10 +424,10 @@ final class ActivityReset {
 					$db->query( 'DELETE FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" );
 					$db->query( 'DELETE FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" );
 				}
-				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
+				foreach ( array( 'sessions', 'enrollments', 'trials', 'course_months', 'course_month_dues', 'course_credits', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
-				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati
+				do_action( 'asem_activity_deleted', $activity_id, $mode ); // le estensioni tolgono i dati collegati (con la scelta sulle somme)
 				$db->delete( Db::t( 'activities' ), array( 'id' => $activity_id ) );
 				self::forget_in_pages( $activity_id );
 				Audit::log( 'activity.deleted', 'activity', $activity_id, array( 'name' => $name, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'], 'kept_cents' => $sum['kept_cents'] ) );
@@ -577,7 +591,15 @@ final class ActivityReset {
 	/** L'eliminazione dell'evento non tocca la prima nota (nessun incasso, spesa o restituzione collegati): basta una sola conferma. */
 	public static function activity_is_free( int $activity_id ): bool {
 		$p = self::preview( $activity_id );
-		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'];
+		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'] && ! self::other_payments( $activity_id, 0, 0, '' );
+	}
+
+	/**
+	 * Pagamenti fuori dalla prima nota legati all'attività o all'iscrizione (le estensioni li descrivono): frasi da mostrare prima di eliminare.
+	 * Se ce ne sono, l'eliminazione chiede la scelta sulle somme anche senza incassi. @return string[]
+	 */
+	public static function other_payments( int $activity_id, int $person_id, int $session_id, string $mode ): array {
+		return array_values( array_filter( array_map( 'strval', (array) apply_filters( 'asem_reset_other_payments', array(), $activity_id, $person_id, $session_id, $mode ) ) ) );
 	}
 
 	/**
@@ -697,20 +719,22 @@ final class ActivityReset {
 		$db     = self::db();
 		$ledger = Plugin::ledger();
 		$sid    = (int) $p['session_id'];
+		$back   = array(); // a chi torna il versamento (chi partecipava o chi ha prenotato per lui)
 		$sum    = array( 'income_count' => $p['income']['count'], 'income_cents' => $p['income']['cents'], 'kept_count' => $p['fruited']['count'], 'kept_cents' => $p['fruited']['cents'], 'debt_cents' => $p['fruited']['debt_cents'], 'credit_cents' => $p['fruited']['credit_cents'], 'refunds' => 0, 'voided' => 0, 'notified' => 0, 'name' => $who );
 		$ledger->in_batch(
-			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p ) {
+			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p, &$back ) {
 				$today = current_time( 'Y-m-d' );
 				$cat   = self::REFUND === $mode ? self::refund_category() : 0;
 				$ctx   = self::fruit_context( $a );
 				foreach ( self::registration_incomes( $activity_id, $person_id, $sid ) as $m ) {
+					$back[ self::refund_person( array( 'person_id' => $person_id, 'session_id' => $sid ) + $m ) ] = true;
 					if ( self::is_fruited( $m, $ctx ) ) {
 						continue; // già fruito: resta in prima nota
 					}
 					if ( self::REFUND === $mode ) {
 						$d = array(
 							'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
-							'activity_id' => $activity_id, 'person_id' => $person_id,
+							'activity_id' => $activity_id, 'person_id' => self::refund_person( array( 'person_id' => $person_id, 'session_id' => $sid ) + $m ),
 							'description' => mb_substr( '[Iscrizione cancellata: ' . $who . '] Restituzione di un incasso del ' . $m['tx_date'], 0, 255 ),
 						);
 						if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
@@ -734,14 +758,14 @@ final class ActivityReset {
 					$db->delete( Db::t( 'waitlist' ), array( 'session_id' => $sid, 'person_id' => $person_id ) );
 				} else {
 					$db->delete( Db::t( 'enrollments' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
-					do_action( 'asem_registration_deleted', $activity_id, $person_id );
+					do_action( 'asem_registration_deleted', $activity_id, $person_id, $mode );
 				}
 				Audit::log( 'registration.deleted', 'activity', $activity_id, array( 'person' => $person_id, 'session' => $sid, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'kept_cents' => $sum['kept_cents'], 'debt_cents' => $sum['debt_cents'], 'credit_cents' => $sum['credit_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
 			}
 		);
 		if ( ! empty( $opts['notify'] ) && is_email( (string) $p['person']['email'] ) ) {
 			$text = 'Ciao ' . $p['person']['first_name'] . ",\n\n" . 'la tua ' . ( $p['session'] ? 'prenotazione' : 'iscrizione' ) . ' a «' . $a['name'] . '»' . ( $p['session'] ? ' del ' . ( new \DateTimeImmutable( (string) $p['session']['session_date'] ) )->format( 'd/m/Y' ) : '' ) . ' è stata annullata.'
-				. ( self::REFUND === $mode && $p['income']['count'] ? "\n\nIl contributo che avevi versato ti verrà restituito: la segreteria ti contatterà." : '' );
+				. ( self::REFUND === $mode && $p['income']['count'] && ( ! $back || isset( $back[ $person_id ] ) ) ? "\n\nIl contributo che avevi versato ti verrà restituito: la segreteria ti contatterà." : '' );
 			if ( Texts::mail( $p['person']['email'], Texts::subject( ( $p['session'] ? 'Prenotazione annullata: ' : 'Iscrizione annullata: ' ) . $a['name'] ), $text ) ) {
 				$sum['notified'] = 1;
 			}

@@ -16,6 +16,7 @@ final class PublicEvents {
 
 	const POST_TYPE = 'asem_evento';
 	const TAXONOMY  = 'asem_evento_cat';
+	const NO_DATES  = 'Date da definire'; // cosa dice {@see PublicEvents::when_text()} di un corso senza giorni né orari
 	const META      = '_asem_activity_id';
 	const OPT_DONE  = 'asem_public_events_backfill';
 	const OPT_FLUSH = 'asem_public_events_rewrite';
@@ -598,7 +599,7 @@ final class PublicEvents {
 				$parts[] = Frontend\Views::date_long( (string) $s['date'] ) . ( ! empty( $s['start'] ) ? ' ' . $s['start'] : '' );
 			}
 		}
-		return $parts ? implode( ', ', $parts ) : 'Date da definire';
+		return $parts ? implode( ', ', $parts ) : self::NO_DATES;
 	}
 
 	/** @param array $a attività */
@@ -1257,7 +1258,7 @@ final class PublicEvents {
 			foreach ( ActivityService::slots( $a ) as $sl ) {
 				$slots[ (int) $sl['day'] ] = (string) ( $sl['start'] ?? '' );
 			}
-			foreach ( self::course_dates( $a, $ym . '-01', $last ) as $d ) {
+			foreach ( CourseCalendar::dates( $a, $ym . '-01', $last ) as $d ) {
 				$dow = (int) gmdate( 'N', (int) strtotime( $d . ' 12:00:00' ) );
 				$by[ $d ][] = array( 'activity_id' => (int) $aid, 'session_date' => $d, 'start_time' => $slots[ $dow ] ?? (string) ( $a['lesson_start'] ?? '' ) );
 			}
@@ -1302,25 +1303,6 @@ final class PublicEvents {
 			$h .= '<p class="asemf-muted">' . esc_html( '' !== $empty ? $empty : 'Nessun evento in questo mese.' ) . '</p>';
 		}
 		return $h;
-	}
-
-	/** Giorni in cui si tiene un corso tra due date (incluse): lezioni settimanali e date uniche, con le lezioni annullate o spostate. @return string[] */
-	private static function course_dates( array $a, string $from, string $to ): array {
-		$dates = array();
-		foreach ( ActivityService::lessons( $a ) as $s ) {
-			if ( 'single' === $s['type'] ) {
-				if ( $s['date'] >= $from && $s['date'] <= $to ) {
-					$dates[] = $s['date'];
-				}
-				continue;
-			}
-			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
-			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-				$dates[] = $d;
-			}
-		}
-		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to );
 	}
 
 	/** Una card: badge della data, locandina, categoria, titolo, orario, luogo, contributo. */

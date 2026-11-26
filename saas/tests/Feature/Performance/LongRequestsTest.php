@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 
 it('le pagine lunghe del browser hanno i tempi delle operazioni lunghe: durata e query con i dati della demo', function (): void {
-    config(['saas.demo.enabled' => true, 'saas.demo.people' => 40]);
+    demoOn(['saas.demo.people' => 40]);
     // Le altre connessioni (proprietario) non aspettano per sempre la transazione del test: se succede, l'errore si vede.
     $owner = DB::connection(app(DatabaseNames::class)->ownerConnection(null));
     $owner->statement("SET lock_timeout = '20s'");

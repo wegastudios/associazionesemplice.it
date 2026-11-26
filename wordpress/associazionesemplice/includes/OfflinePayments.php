@@ -40,6 +40,14 @@ class OfflinePayments {
 	}
 
 	/**
+	 * Gli incassi registrano chi paga al posto di chi partecipa (voce «payer_id»)? Senza pagamenti online sì; un'estensione che li porta lo dichiara ridefinendo
+	 * questo metodo: una di prima non lo fa, e allora la prenotazione per altri soci non si offre.
+	 */
+	public function books_payer(): bool {
+		return self::class === get_class( $this );
+	}
+
+	/**
 	 * Voci dovute dal socio e dai suoi ospiti, indicizzate per chiave. Gli importi sono sempre quelli del server.
 	 *
 	 * @return array[] chiave => voce
@@ -69,6 +77,10 @@ class OfflinePayments {
 					if ( $m['missing'] <= 0 ) {
 						continue;
 					}
+					$by = ActivityService::month_payer( $s['enrollment'], (string) $m['month'] );
+					if ( $by && $by !== (int) $actor['id'] && ActivityService::others_allowed() ) {
+						continue; // mese di un altro socio iscritto da chi paga: sta tra i dovuti di chi l'ha iscritto
+					}
 					$i        = array(
 						'type' => PaymentItems::COURSE_MONTH, 'person_id' => $pid, 'person_name' => $name, 'activity_id' => (int) $s['enrollment']['activity_id'],
 						'month' => $m['month'], 'amount_cents' => (int) $m['missing'], 'label' => $s['activity']['name'] . ' — ' . $this->month_label( $m['month'] ),
@@ -78,15 +90,66 @@ class OfflinePayments {
 				}
 			}
 			foreach ( $acts->unpaid_bookings_for_person( $pid ) as $b ) {
-				$i        = array(
-					'type' => PaymentItems::BOOKING, 'person_id' => $pid, 'person_name' => $name, 'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'],
-					'amount_cents' => (int) $b['remaining'], 'label' => $b['activity_name'] . ' — ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
-				);
-				$i['key'] = PaymentItems::key( $i );
-				$items[ $i['key'] ] = $i;
+				$this->add_booking_due( $items, $b, $pid, $name );
+			}
+		}
+		if ( ActivityService::others_allowed() && ! MemberSession::is_out( $actor ) ) { // altri soci iscritti da lui: i mesi che paga lui (il primo), con la sola tessera
+			$this->add_paid_for_others( $items, (int) $actor['id'] );
+		}
+		if ( MemberSession::is_out( $actor ) ) { // l'ex socio tutore: solo i contributi che ha preso a carico per i figli
+			foreach ( $acts->unpaid_bookings_for_person( (int) $actor['id'] ) as $b ) {
+				if ( in_array( (int) $b['person_id'], $dependents, true ) ) {
+					$this->add_booking_due( $items, $b, (int) $actor['id'], '' );
+				}
 			}
 		}
 		return (array) apply_filters( 'asem_online_dues', $items, $actor ); // un'estensione aggiunge altre voci da pagare
+	}
+
+	/** I mesi di corso di altri soci che $payer ha iscritto e paga lui: intestati a chi partecipa, pagante lui. */
+	private function add_paid_for_others( array &$items, int $payer ): void {
+		$acts = Plugin::activities();
+		foreach ( $acts->enrollments_paid_by( $payer ) as $e ) {
+			$p = Plugin::people()->get( (int) $e['person_id'] );
+			if ( ! $p ) {
+				continue;
+			}
+			foreach ( $acts->status_for_person( (int) $p['id'] ) as $s ) {
+				if ( (int) $s['enrollment']['activity_id'] !== (int) $e['activity_id'] ) {
+					continue;
+				}
+				foreach ( $s['summary']['unpaid_months'] as $m ) {
+					if ( $m['missing'] <= 0 || ActivityService::month_payer( $s['enrollment'], (string) $m['month'] ) !== $payer ) {
+						continue;
+					}
+					$i        = array(
+						'type' => PaymentItems::COURSE_MONTH, 'person_id' => (int) $p['id'], 'person_name' => ActivityService::participant_name( $p, $payer ), 'activity_id' => (int) $e['activity_id'],
+						'month' => $m['month'], 'amount_cents' => (int) $m['missing'], 'label' => $s['activity']['name'] . ' — ' . $this->month_label( $m['month'] ), 'payer_id' => $payer,
+					);
+					$i['key'] = PaymentItems::key( $i );
+					$items[ $i['key'] ] = $i;
+				}
+			}
+		}
+	}
+
+	/** La voce di una prenotazione di cui risponde $debtor: resta intestata a chi partecipa; se è un'altra persona, chi paga (payer_id) è chi ha prenotato. */
+	private function add_booking_due( array &$items, array $b, int $debtor, string $name ): void {
+		$pid   = (int) $b['person_id'];
+		$other = $pid !== $debtor;
+		if ( $other ) {
+			$p = Plugin::people()->get( $pid );
+			if ( $p && ! ActivityService::others_allowed() && MemberType::is_member( (string) $p['type'] ) && ! Guardians::is_guardian_of( $debtor, $pid ) ) {
+				return; // con un Pro che non conosce il pagante questa voce non si paga online: la incassa la segreteria
+			}
+			$name = $p ? ActivityService::participant_name( $p, $debtor ) : '';
+		}
+		$i = array(
+			'type' => PaymentItems::BOOKING, 'person_id' => $pid, 'person_name' => $name, 'session_id' => (int) $b['session_id'], 'activity_id' => (int) $b['activity_id'],
+			'amount_cents' => (int) $b['remaining'], 'label' => $b['activity_name'] . ' — ' . ( new \DateTimeImmutable( $b['session_date'] ) )->format( 'd/m/Y' ),
+		) + ( $other ? array( 'payer_id' => $debtor ) : array() );
+		$i['key']           = PaymentItems::key( $i );
+		$items[ $i['key'] ] = $i;
 	}
 
 	// ---------- Quota della domanda di adesione ----------

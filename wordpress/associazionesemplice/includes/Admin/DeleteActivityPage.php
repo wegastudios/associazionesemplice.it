@@ -117,6 +117,10 @@ final class DeleteActivityPage {
 			}
 		}
 
+		foreach ( ActivityReset::other_payments( $id, 0, 0, '' ) as $line ) {
+			echo '<p>' . esc_html( $line ) . '</p>';
+		}
+
 		if ( ActivityReset::activity_is_free( $id ) ) { // nessun movimento in prima nota: una sola conferma (il pulsante)
 			Ui::form_open( 'asem_delete_activity', $back );
 			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
@@ -140,7 +144,7 @@ final class DeleteActivityPage {
 	private static function choose( array $p, string $back ): void {
 		$id = (int) $p['activity']['id'];
 		echo '<form method="get"><input type="hidden" name="page" value="asem-activity-delete"><input type="hidden" name="id" value="' . (int) $id . '"><input type="hidden" name="step" value="2">';
-		if ( $p['income']['count'] ) {
+		if ( $p['income']['count'] || ActivityReset::other_payments( $id, 0, 0, '' ) ) {
 			echo '<h3>Cosa fare delle somme incassate</h3>';
 			echo '<p><label><input type="radio" name="mode" value="refund" checked> <strong>Restituisci le somme</strong></label><br><span class="description">Gli incassi restano in prima nota e per ciascuno si registra l\'uscita di restituzione (stesso conto e stessa modalità). Il denaro va restituito davvero a chi ha pagato.</span></p>';
 			echo '<p><label><input type="radio" name="mode" value="void"> <strong>Annulla gli incassi, come se non fossero mai avvenuti</strong></label><br><span class="description">Gli incassi vengono annullati: spariscono da saldi, report e rendiconto (restano nell\'elenco degli annullamenti e nel registro azioni). Nessuna restituzione viene registrata.</span></p>';
@@ -158,6 +162,9 @@ final class DeleteActivityPage {
 		$blockers                 = ActivityReset::blockers( $id, $mode, $void_costs );
 		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income_void'], $p['income_open'] ) : $p['income_void']; // si restituisce solo ciò che non è già stato restituito, e né si restituisce né si annulla ciò che è già stato fruito
 
+		foreach ( ActivityReset::other_payments( $id, 0, 0, $mode ) as $line ) {
+			echo '<p><strong>' . esc_html( $line ) . '</strong></p>';
+		}
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede alla prima nota</h3>';
 		if ( ! $inc['count'] && ! ( $void_costs && $p['expense']['count'] ) ) {
 			echo '<p>Nessun movimento da modificare: la prima nota non cambia.</p>';

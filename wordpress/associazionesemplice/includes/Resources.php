@@ -710,19 +710,19 @@ final class Resources {
 			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
 		}
 		if ( (int) $r['credits_paid'] > 0 ) {
-			throw new \InvalidArgumentException( 'Questa prenotazione è già stata pagata in crediti.' );
+			throw new \InvalidArgumentException( 'Questa prenotazione è già stata pagata in ' . CoinName::plural() . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$step  = max( 1, (int) $res['slot_minutes'] );
 		$slots = ResourceRules::SLOT === $res['mode'] && $r['ends_at'] ? max( 1, (int) round( ( strtotime( (string) $r['ends_at'] . ' UTC' ) - strtotime( (string) $r['starts_at'] . ' UTC' ) ) / 60 / $step ) ) : 1;
 		$cost  = self::credit_price( $res, $slots );
 		if ( $cost < 1 ) {
-			throw new \InvalidArgumentException( 'Questa risorsa non si paga in crediti.' );
+			throw new \InvalidArgumentException( 'Questa risorsa non si paga in ' . CoinName::plural() . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		Credits::spend( $person_id, $cost, $res['name'] . ' — ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', $reservation_id );
 		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => $cost, 'hold_until' => null ), array( 'id' => $reservation_id ) );
 		$sh = self::fund_share( $res, (int) $r['fee_due_cents'] ); // la quota del fondo si calcola sul prezzo in euro della prenotazione: i crediti non hanno incasso in prima nota
 		if ( $sh > 0 ) {
-			Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, Db::today(), null, 'Accantonamento di «' . $res['name'] . '» pagato in crediti' );
+			Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, Db::today(), null, 'Accantonamento di «' . $res['name'] . '» pagato in ' . CoinName::plural() );
 		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
@@ -938,7 +938,7 @@ final class Resources {
 		$res = self::get( (int) $r['resource_id'] );
 		$sh  = $res ? self::fund_share( $res, (int) $r['fee_due_cents'] ) : 0; // la quota accantonata alla spesa dei crediti torna disponibile
 		if ( $sh > 0 ) {
-			Plugin::funds()->take_back( (int) $res['fund_id'], $sh, Db::today(), 'Prenotazione annullata: crediti riaccreditati («' . $res['name'] . '»)' );
+			Plugin::funds()->take_back( (int) $res['fund_id'], $sh, Db::today(), 'Prenotazione annullata: ' . CoinName::plural() . ' restituiti («' . $res['name'] . '»)' );
 		}
 	}
 

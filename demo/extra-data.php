@@ -234,8 +234,49 @@ extra_step( 'rimborsi', function () use ( $by_name ) {
 
 // Eventi sul sito: le pagine pubbliche degli eventi (descrizione, categoria, locandina) e qualche evento in più nei prossimi mesi.
 
-/** Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
+/**
+ * Immagine vera per un titolo: <cartella degli script>/locandine/<slug del titolo>.webp (o assets/locandine/, come nel repository). Vuota se non c'è.
+ * Verticale 1000×1250, leggera (max ~150 KB), soggetto nella metà alta (nella scheda a 16/9 si taglia dall'alto); niente persone riconoscibili, marchi o testo.
+ */
+function extra_poster_file( string $title ): string {
+	foreach ( array( __DIR__ . '/locandine', __DIR__ . '/assets/locandine' ) as $dir ) {
+		$f = $dir . '/' . sanitize_title( $title ) . '.webp';
+		if ( is_readable( $f ) && filesize( $f ) > 0 ) {
+			return $f;
+		}
+	}
+	return '';
+}
+
+/** Carica nella libreria un file WebP di locandina (senza il controllo del tipo di WordPress, come per i PNG) con il testo alternativo. */
+function extra_poster_import( string $file, string $title ) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$bytes = (string) file_get_contents( $file );
+	$up    = wp_upload_bits( sanitize_title( $title ) . '.webp', null, $bytes );
+	if ( ! empty( $up['error'] ) ) {
+		return 0;
+	}
+	$id = wp_insert_attachment( array( 'post_mime_type' => 'image/webp', 'post_title' => $title, 'post_status' => 'inherit' ), $up['file'] );
+	if ( ! $id || is_wp_error( $id ) ) {
+		return 0;
+	}
+	wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
+	update_post_meta( (int) $id, '_wp_attachment_image_alt', 'Immagine illustrativa per «' . $title . '»' );
+	update_post_meta( (int) $id, '_asem_locandina_sha1', sha1_file( $file ) );
+	return (int) $id;
+}
+
+/** Locandina: l'immagine vera se c'è il file per il titolo, altrimenti una inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
 function extra_poster( string $title, array $rgb ) {
+	$real = extra_poster_file( $title );
+	if ( '' !== $real ) {
+		$id = extra_poster_import( $real, $title );
+		if ( $id ) {
+			return $id;
+		}
+	}
 	if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
 		return 0;
 	}
@@ -320,7 +361,7 @@ extra_step( 'eventi sul sito', function () {
 	$texts['Concerto d\'autunno']       = array( 'Musica', 'Il coro e la banda dell\'associazione aprono la stagione con un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 150, 90, 60 ) );
 	$texts['Festa di Natale']           = array( 'Serate', 'Panettone, musica e la tombola dei soci: una serata per scambiarci gli auguri e conoscere i nuovi arrivati.', array( 170, 50, 60 ) );
 	$texts['Tombolata dell\'Epifania']  = array( 'Serate', 'Cartelle, premi e tanta allegria per grandi e piccoli: la tombola che chiude le feste.', array( 90, 110, 150 ) );
-	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con merenda offerta dall\'associazione.', array( 220, 100, 140 ) );
+	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con una merenda per tutti.', array( 220, 100, 140 ) );
 	$texts['Gita di primavera']         = array( 'Gite', 'Una giornata in campagna tra passeggiata, pranzo al sacco e giochi all\'aperto. Si parte in auto condivise.', array( 70, 160, 80 ) );
 	$texts['Torneo di burraco']         = array( 'Serate', 'Una serata di carte tra soci e amici: iscrizioni aperte, premi per i primi tre.', array( 130, 70, 110 ) );
 	$texts['Cena di fine anno sociale'] = array( 'Serate', 'Una cena per chiudere l\'anno insieme, con il bilancio di quanto fatto e le prime idee per il prossimo.', array( 190, 120, 70 ) );
@@ -485,7 +526,7 @@ extra_step( 'eventi di ogni stagione con date passate', function () {
 		array( 'Serata danzante', 'Serate', 'Una serata di ballo in sede con musica dal vivo e liscio per tutti: si balla, si chiacchiera e si porta qualcosa da bere. Ingresso per i soci, con un piccolo contributo per gli ospiti.', array( 170, 60, 110 ), '21:00', 'Sede dell\'associazione', 80, 500, 'terzo sabato' ),
 		array( 'Festa dell\'associazione', 'Serate', 'La festa di tutti i soci: giochi per i bambini, banchetti dei volontari, musica e una tavolata per stare insieme e raccontare cosa abbiamo fatto.', array( 200, 110, 60 ), '16:00', 'Giardino dell\'associazione', 120, 0, 'il 18' ),
 		array( 'Concerto di ukulele', 'Musica', 'Il gruppo ukulele dell\'associazione suona i suoi brani preferiti, dai classici alle canzoni da cantare insieme. Ingresso libero, porta un cuscino.', array( 60, 150, 140 ), '21:00', 'Sede dell\'associazione', 70, 0, 'venerdì a caso' ),
-		array( 'Concerto degli Who Cover Band', 'Musica', 'Una serata di rock con la tribute band degli Who: i grandi successi suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
+		array( 'Concerto tributo rock anni Settanta', 'Musica', 'Una serata di rock con una tribute band: i grandi successi degli anni Settanta suonati dal vivo. Posti limitati, prenota per essere sicuro di entrare.', array( 190, 50, 50 ), '21:30', 'Teatro parrocchiale', 120, 800, 'venerdì a caso' ),
 	);
 	usort( $events, function ( $a, $b ) {
 		return strcmp( 'il 18' === $a[8] ? '0' : '1', 'il 18' === $b[8] ? '0' : '1' ); // prima la festa: la serata danzante evita i suoi giorni
@@ -837,5 +878,37 @@ extra_step( 'tetto orario delle email', function () {
 	\AssociazioneSemplice\Settings::update( array( 'limits' => $limits ) );
 	if ( 20 !== \AssociazioneSemplice\MailBudget::cap() ) {
 		throw new \RuntimeException( 'il tetto orario delle email non è 20' );
+	}
+} );
+
+// Limiti per socio nell'area soci: nella demo tutti i visitatori entrano con lo stesso socio, quindi il limite di «prenotazioni ogni 10 minuti» (20; una prenotazione di gruppo pesa quanto le persone)
+// e quello degli annullamenti si consumerebbero in fretta e un visitatore vedrebbe un rifiuto causato dagli altri. Si alzano a 100; i tentativi falliti sugli altri soci restano ai valori di serie.
+extra_step( 'limiti di prenotazione per socio', function () {
+	$limits                          = \AssociazioneSemplice\Settings::get( 'limits' );
+	$limits                          = is_array( $limits ) ? $limits : array();
+	$limits['member_book_per_10min']   = 100;
+	$limits['member_cancel_per_10min'] = 100;
+	\AssociazioneSemplice\Settings::update( array( 'limits' => $limits ) );
+	if ( 100 !== \AssociazioneSemplice\Limits::get( 'member_book_per_10min' ) ) {
+		throw new \RuntimeException( 'il limite di prenotazioni per socio non è 100' );
+	}
+} );
+
+// Prova fissa a ogni azzeramento: nessuna email deve uscire dalla demo, qualunque sia il destinatario (anche indirizzi veri). Il mu-plugin asem-demo.php
+// spegne la posta con pre_wp_mail: se manca o non funziona, PHPMailer verrebbe chiamato e l'azzeramento si ferma con un errore.
+extra_step( 'posta in uscita bloccata', function () {
+	$calls = 0;
+	$count = function () use ( &$calls ) {
+		++$calls;
+	};
+	add_action( 'phpmailer_init', $count );
+	try {
+		wp_mail( 'persona.vera@gmail.com', 'Prova demo', 'Questa email non deve uscire.' );
+		wp_mail( array( 'info@associazionesemplice.it', 'qualcuno@example.org' ), 'Prova demo', 'Questa email non deve uscire.' );
+	} finally {
+		remove_action( 'phpmailer_init', $count );
+	}
+	if ( 0 !== $calls ) {
+		throw new \RuntimeException( 'la posta della demo NON è bloccata: PHPMailer è stato chiamato ' . $calls . ' volte' );
 	}
 } );

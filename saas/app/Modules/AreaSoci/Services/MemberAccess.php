@@ -149,13 +149,13 @@ final readonly class MemberAccess
         return rtrim($baseUrl, '/').'/area/entra/'.$link;
     }
 
-    /** Apre una sessione: il token va nel cookie, nel database solo l'impronta. */
-    public function open(string $personId, ?string $email, ?string $userAgent): string
+    /** Apre una sessione: il token va nel cookie, nel database solo l'impronta. Con $minutes una sessione breve (solo la demo). */
+    public function open(string $personId, ?string $email, ?string $userAgent, ?int $minutes = null): string
     {
         $token = self::random();
         $this->table('app.member_sessions')->insert([
             'org_id' => $this->org(), 'id' => Str::uuid7()->toString(), 'token_hash' => self::hash($token), 'email' => $email, 'person_id' => $personId,
-            'user_agent' => $userAgent === null ? null : mb_substr($userAgent, 0, 255), 'expires_at' => now()->addDays(self::MAX_DAYS),
+            'user_agent' => $userAgent === null ? null : mb_substr($userAgent, 0, 255), 'expires_at' => $minutes === null ? now()->addDays(self::MAX_DAYS) : now()->addMinutes($minutes),
         ]);
         $this->audit->record('member.login', 'app.people', $personId);
 

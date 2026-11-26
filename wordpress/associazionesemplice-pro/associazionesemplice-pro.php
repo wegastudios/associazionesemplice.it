@@ -4,7 +4,7 @@
  * Description:       Funzioni avanzate per Associazione Semplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede Associazione Semplice.
  * Plugin URI:        https://associazionesemplice.it
  * Update URI:        https://associazionesemplice.it/
- * Version:           1.3.23
+ * Version:           1.3.27
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  associazionesemplice
@@ -16,9 +16,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_PRO_VERSION', '1.3.23' );
+define( 'ASEM_PRO_VERSION', '1.3.27' );
 define( 'ASEM_PRO_API', 18 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
+define( 'ASEM_PRO_MIN_FREE', '1.3.40' ); // la prima versione di Associazione Semplice che ha tutto ciò che questo Pro usa (censimento delle chiamate): sotto, il Pro si sospende con un avviso, senza errori
 define( 'ASEM_PRO_DIR', plugin_dir_path( __FILE__ ) );
+
+/** Il gratuito installato è più vecchio di quello che questo Pro richiede? */
+function asem_pro_free_too_old(): bool {
+	return defined( 'ASEM_VERSION' ) && version_compare( (string) ASEM_VERSION, ASEM_PRO_MIN_FREE, '<' );
+}
 
 /**
  * Installare e aggiornare Associazione Semplice e Associazione Semplice Pro si può fare in qualunque ordine e anche uno solo dei due: questo file non dà mai
@@ -33,6 +39,9 @@ function asem_pro_problem(): string {
 	}
 	if ( ! defined( 'ASEM_API' ) || ASEM_API !== ASEM_PRO_API ) {
 		return '<strong>Associazione Semplice Pro</strong> non è compatibile con questa versione di Associazione Semplice: le funzioni avanzate sono sospese. Aggiorna entrambi all\'ultima versione; il resto funziona e i dati sono al sicuro.';
+	}
+	if ( asem_pro_free_too_old() ) {
+		return '<strong>Associazione Semplice Pro</strong> ha bisogno di <strong>Associazione Semplice</strong> ' . ASEM_PRO_MIN_FREE . ' o successiva: le funzioni avanzate sono sospese. Aggiorna Associazione Semplice; il resto funziona e i dati sono al sicuro.';
 	}
 	return '';
 }
@@ -90,7 +99,19 @@ function asem_pro_updater_basics(): void {
 
 /** Pulsante dell'avviso di incompatibilità: «Aggiorna il Pro» se il portale ne ha uno nuovo, altrimenti «Controlla aggiornamenti». */
 function asem_pro_notice_button(): string {
-	if ( ! current_user_can( 'update_plugins' ) || ! class_exists( 'AssociazioneSemplice\Updater' ) || ! \AssociazioneSemplice\Updater::enabled() ) {
+	if ( asem_pro_free_too_old() ) { // aggiornare il Pro non serve: va aggiornato il gratuito (se WordPress lo ha già trovato) oppure si controlla se c'è
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return '';
+		}
+		$free_file = 'associazionesemplice/associazionesemplice.php';
+		$updates   = get_site_transient( 'update_plugins' );
+		if ( is_object( $updates ) && isset( $updates->response[ $free_file ] ) ) {
+			$url = wp_nonce_url( self_admin_url( 'update.php?action=upgrade-plugin&plugin=' . rawurlencode( $free_file ) ), 'upgrade-plugin_' . $free_file );
+			return ' <a class="button button-primary" href="' . esc_url( $url ) . '">' . esc_html( 'Aggiorna Associazione Semplice' ) . '</a>';
+		}
+		return ' <a class="button" href="' . esc_url( self_admin_url( 'update-core.php?force-check=1' ) ) . '">' . esc_html( 'Controlla aggiornamenti' ) . '</a>';
+	}
+	if ( ! current_user_can( 'update_plugins' ) || ! class_exists( 'AssociazioneSemplice\Updater' ) || ! method_exists( '\AssociazioneSemplice\Updater', 'pro_update_available' ) || ! method_exists( '\AssociazioneSemplice\Updater', 'check_url' ) || ! \AssociazioneSemplice\Updater::enabled() ) {
 		return '';
 	}
 	if ( null !== \AssociazioneSemplice\Updater::pro_update_available() ) {
@@ -134,7 +155,7 @@ add_action(
 			}
 		}
 		$problem = asem_pro_problem();
-		if ( '' !== $problem && defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ) {
+		if ( '' !== $problem && ( ( defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ) || asem_pro_free_too_old() ) ) {
 			asem_pro_updater_basics(); // livello di compatibilità diverso: le classi del Pro non si caricano, ma l'aggiornamento deve funzionare
 		}
 		if ( '' !== $problem ) {
@@ -142,7 +163,7 @@ add_action(
 				'admin_notices',
 				function () use ( $problem ) {
 					if ( current_user_can( 'activate_plugins' ) ) {
-						$button = defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ? asem_pro_notice_button() : ''; // il pulsante solo se il problema è la versione, non l'assenza del gratuito
+						$button = ( defined( 'ASEM_API' ) && ASEM_API !== ASEM_PRO_API ) || asem_pro_free_too_old() ? asem_pro_notice_button() : ''; // il pulsante solo se il problema è la versione, non l'assenza del gratuito
 						echo '<div class="notice notice-error"><p>' . wp_kses( $problem, array( 'strong' => array() ) ) . wp_kses( $button, array( 'a' => array( 'class' => array(), 'href' => array() ) ) ) . '</p></div>';
 					}
 				}

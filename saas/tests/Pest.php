@@ -54,3 +54,16 @@ function zipContents(string $bytes): array
 
     return $out;
 }
+
+/**
+ * Accende la demo come sul server demo: SAAS_DEMO acceso E ambiente «demo» (DemoScale::active()). Nell'ambiente «demo» le
+ * prove non saltano più il controllo CSRF (lo salta solo «testing»): qui lo si toglie dalle richieste del test.
+ *
+ * @param  array<string, mixed>  $config  altre impostazioni (o `saas.demo.enabled` diverso)
+ */
+function demoOn(array $config = []): void
+{
+    config(['saas.demo.enabled' => true, ...$config]);
+    app()->detectEnvironment(static fn (): string => 'demo');
+    test()->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class, Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+}

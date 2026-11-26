@@ -277,7 +277,7 @@ final class ResourcesPage {
 		return '<tr><th>Fondo</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span><br>'
 			. 'nel fondo <select name="fund_id">' . Ui::options( $funds, $res && ! empty( $res['fund_id'] ) ? (int) $res['fund_id'] : 0 ) . '</select>'
-			. '<p class="description">Utile per le risorse date in gestione a terzi (la parte accantonata spetta al gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto, anche in crediti, va nel fondo scelto: l\'incasso resta sul conto usato, ma quella parte è accantonata e non conta nella disponibilità reale finché il fondo non viene rimborsato o liberato da <em>Conti e fondi</em>. Se annulli un incasso, si annulla anche la sua parte.</p></td></tr>';
+			. '<p class="description">Utile per le risorse date in gestione a terzi (la parte accantonata spetta al gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto, anche nella moneta interna, va nel fondo scelto: l\'incasso resta sul conto usato, ma quella parte è accantonata e non conta nella disponibilità reale finché il fondo non viene rimborsato o liberato da <em>Conti e fondi</em>. Se annulli un incasso, si annulla anche la sua parte.</p></td></tr>';
 	}
 
 	/** Riga del modulo: la voce di prima nota su cui vanno gli incassi della risorsa (così nei report si vedono separati). */
@@ -287,7 +287,7 @@ final class ResourcesPage {
 			$opts[ $c['id'] ] = $c['name'];
 		}
 		return '<tr><th>Voce di prima nota</th><td><select name="category_id">' . Ui::options( $opts, $res && ! empty( $res['category_id'] ) ? (int) $res['category_id'] : 0 ) . '</select>'
-			. '<p class="description">Gli incassi di questa risorsa (in segreteria e online) vanno su questa voce, così nei report e nel rendiconto si vedono separati da quelli delle altre risorse. Le voci sono quelle della prima nota (Cassa → Prima nota). I crediti spesi non hanno un incasso: l\'entrata è la vendita dei crediti.</p></td></tr>';
+			. '<p class="description">Gli incassi di questa risorsa (in segreteria e online) vanno su questa voce, così nei report e nel rendiconto si vedono separati da quelli delle altre risorse. Le voci sono quelle della prima nota (Cassa → Prima nota). Ciò che si paga nella moneta interna non ha un incasso: l\'entrata è la vendita dei crediti.</p></td></tr>';
 	}
 
 	/** Riga del modulo: l'ingresso con il QR della prenotazione. */
@@ -329,7 +329,7 @@ final class ResourcesPage {
 			. self::setup_row( $res )
 			. '<tr><th>Tariffe a fasce</th><td><textarea name="rates_text" rows="3" cols="40" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20,00">' . esc_textarea( ResourceRules::rates_text( ResourceRules::clean_rates( $v( 'rates', '' ) ) ) ) . '</textarea><br><span class="description">Facoltative, solo per le risorse a fasce: una per riga, «giorni ore importo» (giorni: <em>tutti</em>, <em>feriali</em> lun–ven, <em>weekend</em> sab–dom). Vale la prima riga che corrisponde all\'ora di inizio di ogni fascia; fuori dalle righe vale la tariffa base.</span></td></tr>'
 			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono giorni di tolleranza. La segreteria può sempre registrare prenotazioni e incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
-			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )
+			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . '</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> ' . esc_html( \AssociazioneSemplice\CoinName::plural() ) . ' ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">' . esc_html( '0 = non si paga in ' . \AssociazioneSemplice\CoinName::plural() . '. Con un costo il socio può pagare subito dal suo saldo, oltre alle vie scelte sopra; annullando la prenotazione il saldo torna com\'era. Vale anche per gli ospiti ammessi: nessun supplemento.' ) . '</span></td></tr>' : '' )
 			. self::category_row( $res )
 			. self::reminder_row( $res )
 			. self::entry_row( $res )

@@ -1,13 +1,15 @@
 <script setup>
-import { usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { CircleAlert, CircleCheck, X } from './icons.js';
 
 const page = usePage();
 const toast = ref(null);
 let timer = null;
 const error = computed(() => page.props.errors?.ledger ?? null);
-const dismissed = ref(null);
+const dismissed = ref(false);
+const box = ref(null);
+const shown = ref(0);
 
 // Il messaggio di conferma compare per qualche secondo e si chiude toccandolo. L'errore resta finché non si corregge.
 watch(() => page.props.flash, (f) => {
@@ -15,15 +17,23 @@ watch(() => page.props.flash, (f) => {
     toast.value = f?.status ? { text: f.status, id: Date.now() } : null;
     if (toast.value) timer = setTimeout(() => { toast.value = null; }, Math.min(9000, 3500 + toast.value.text.length * 45));
 }, { immediate: true });
-watch(error, () => { dismissed.value = null; });
-onBeforeUnmount(() => clearTimeout(timer));
+// Inertia conserva le proprietà uguali: lo stesso errore ripetuto non fa scattare un watch. L'evento «error» arriva invece a
+// ogni risposta con errori: l'avviso (chiuso o no) si ricrea, così torna in vista e il lettore di schermo lo ripete.
+const stopErrors = router.on('error', async () => {
+    dismissed.value = false;
+    shown.value += 1;
+    if (!error.value) return;
+    await nextTick();
+    box.value?.scrollIntoView({ block: 'nearest' });
+});
+onBeforeUnmount(() => { clearTimeout(timer); stopErrors(); });
 </script>
 
 <template>
-    <div v-if="error && dismissed !== error" class="mb-4 flex items-start gap-3 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-semibold text-danger" role="alert">
+    <div v-if="error && !dismissed" ref="box" :key="shown" class="mb-4 scroll-mt-40 flex items-start gap-3 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-semibold text-danger" role="alert">
         <CircleAlert class="mt-0.5 size-5 shrink-0" aria-hidden="true" />
         <p class="flex-1">{{ error }}</p>
-        <button type="button" class="-mr-2 -mt-1 grid size-9 place-items-center rounded-full hover:bg-danger/10" aria-label="Chiudi l'avviso" @click="dismissed = error"><X class="size-4" /></button>
+        <button type="button" class="-mr-2 -mt-1 grid size-9 place-items-center rounded-full hover:bg-danger/10" aria-label="Chiudi l'avviso" @click="dismissed = true"><X class="size-4" /></button>
     </div>
     <div class="pointer-events-none fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 flex justify-center lg:inset-x-auto lg:bottom-6 lg:right-6 lg:justify-end" aria-live="polite">
         <Transition name="toast">

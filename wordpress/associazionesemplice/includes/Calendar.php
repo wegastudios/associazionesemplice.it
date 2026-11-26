@@ -23,7 +23,7 @@ final class Calendar {
 		$sm  = Settings::start_month(); // imposta anche SocialYear::$legacy_month: entrambi entrano nella chiave (sono impostazioni, non tabelle)
 		$all = SharedMemo::remember(
 			'calendar',
-			$from . '|' . $to . '|' . $sm . '|' . SocialYear::$legacy_month,
+			$from . '|' . $to . '|' . $sm . '|' . SocialYear::$legacy_month . '|' . RedDays::signature(),
 			static function () use ( $from, $to ): array {
 				return self::read_occurrences( $from, $to );
 			}
@@ -46,7 +46,12 @@ final class Calendar {
 		) ?: array();
 		$skip = array(); // lezioni annullate o spostate: activity_id => [data => true]
 		$moves = array();
+		$by_act = array(); // eccezioni per corso
 		foreach ( LessonExceptions::between( $from, $to ) as $e ) {
+			$by_act[ (int) $e['activity_id'] ][] = $e;
+			if ( LessonExceptions::KEEP === $e['action'] ) {
+				continue;
+			}
 			$skip[ (int) $e['activity_id'] ][ (string) $e['lesson_date'] ] = true;
 			if ( LessonExceptions::MOVE === $e['action'] && $e['new_date'] >= $from && $e['new_date'] <= $to ) {
 				$moves[] = $e;
@@ -61,6 +66,7 @@ final class Calendar {
 			$year  = SocialYear::from_label( $a['social_year'], Settings::start_month() );
 			$base0 = $a['starts_on'] ?: $year->start()->format( 'Y-m-d' );
 			$base1 = $a['ends_on'] ?: $year->end()->format( 'Y-m-d' );
+			$red   = CourseCalendar::skip( $a, $from, $to, $by_act[ (int) $a['id'] ] ?? array() );
 			foreach ( ActivityService::lessons( $a ) as $slot ) {
 				if ( 'single' === $slot['type'] ) {
 					if ( $slot['date'] >= $from && $slot['date'] <= $to && empty( $skip[ (int) $a['id'] ][ $slot['date'] ] ) ) {
@@ -71,11 +77,9 @@ final class Calendar {
 					}
 					continue;
 				}
-				$first = max( $from, $slot['from'] ?: $base0 );
-				$last  = min( $to, $slot['until'] ?: $base1 );
-				foreach ( self::weekly_dates( $first, $last, (int) $slot['day'] ) as $d ) {
-					if ( ! empty( $skip[ (int) $a['id'] ][ $d ] ) ) {
-						continue; // lezione annullata o spostata
+				foreach ( CourseCalendar::slot_dates( $slot, $from, $to, $base0, $base1 ) as $d ) {
+					if ( isset( $red[ $d ] ) || ! empty( $skip[ (int) $a['id'] ][ $d ] ) ) {
+						continue; // giorno festivo o di chiusura, oppure lezione annullata o spostata
 					}
 					$out[] = array(
 						'date' => $d, 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],
@@ -170,19 +174,7 @@ final class Calendar {
 
 	/** Date comprese tra $from e $to che cadono nel giorno della settimana indicato (1 = lunedì … 7 = domenica). @return string[] */
 	public static function weekly_dates( string $from, string $to, int $weekday ): array {
-		$out = array();
-		if ( $from > $to || $weekday < 1 || $weekday > 7 ) {
-			return $out;
-		}
-		$d     = new \DateTimeImmutable( $from );
-		$delta = ( $weekday - (int) $d->format( 'N' ) + 7 ) % 7;
-		$d     = $d->modify( '+' . $delta . ' days' );
-		$end   = new \DateTimeImmutable( $to );
-		while ( $d <= $end ) {
-			$out[] = $d->format( 'Y-m-d' );
-			$d     = $d->modify( '+7 days' );
-		}
-		return $out;
+		return Schedule::weekly_dates( $from, $to, $weekday );
 	}
 
 	// ---------- Collegamento a Google Calendar ----------

@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Core\Providers;
 
 use App\Modules\Core\Access\EmployeeCounter;
+use App\Modules\Core\Auth\HostSessionGuard;
 use App\Modules\Core\Console\CreateOrgCommand;
+use App\Modules\Core\Console\DatabaseEmptyCommand;
+use App\Modules\Core\Console\DatabaseNarrowPortalCommand;
+use App\Modules\Core\Console\DatabaseRevokeGroupCommand;
+use App\Modules\Core\Console\DemoCheckEnvCommand;
 use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
@@ -17,6 +22,7 @@ use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Console\WebRefreshCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\JobQueues;
 use App\Modules\Core\Contracts\MailQueue;
 use App\Modules\Core\Contracts\OrgContext;
@@ -26,6 +32,8 @@ use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
+use App\Modules\Core\Demo\DemoMailGuard;
+use App\Modules\Core\Demo\DemoSchedule;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Http\Middleware\ResolveProxyClient;
 use App\Modules\Core\Mail\PrimaryMailer;
@@ -35,6 +43,11 @@ use App\Modules\Core\Org\DatabaseOrgPurger;
 use App\Modules\Core\Platform\PlatformConfig;
 use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Container\Container;
+use Illuminate\Contracts\Cookie\QueueingFactory;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
@@ -45,10 +58,12 @@ use Illuminate\Mail\MailManager;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 final class CoreServiceProvider extends ServiceProvider
 {
@@ -71,6 +86,32 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Guardia «web» con il cookie «ricordami» col prefisso __Host- (HostCookies): stessa costruzione di quella di Laravel
+        // (AuthManager::createSessionDriver), cambia solo il nome del cookie.
+        Auth::extend('host-session', function (Container $app, string $name, array $config): HostSessionGuard {
+            $provider = Auth::createUserProvider(is_string($config['provider'] ?? null) ? $config['provider'] : null);
+            $guard = new HostSessionGuard(
+                $name,
+                $provider ?? throw new RuntimeException('Provider utenti mancante per la guardia '.$name),
+                $app->make(Session::class),
+                rehashOnLogin: config('hashing.rehash_on_login', true) === true,
+                timeboxDuration: is_int($timebox = config('auth.timebox_duration', 200000)) ? $timebox : 200000,
+                hashKey: is_string($key = config('app.key')) ? $key : '',
+            );
+            $guard->setCookieJar($app->make(QueueingFactory::class));
+            $guard->setDispatcher($app->make(Dispatcher::class));
+            // Come in Laravel: la richiesta di adesso, e ogni volta che l'applicazione ne imposta una nuova.
+            $request = $app->refresh('request', $guard, 'setRequest');
+            if ($request instanceof Request) {
+                $guard->setRequest($request);
+            }
+            if (isset($config['remember']) && is_numeric($config['remember'])) {
+                $guard->setRememberDuration((int) $config['remember']);
+            }
+
+            return $guard;
+        });
+
         // Dietro il proxy del portale: con il segreto condiviso (SAAS_PROXY_SECRET) l'indirizzo del visitatore lo legge
         // ResolveProxyClient e nessun indirizzo è «fidato». Senza segreto valgono ancora gli indirizzi di SAAS_TRUSTED_PROXIES
         // (vuoto = nessuno; «*» non è accettato; l'host inoltrato non si legge mai: gli indirizzi sono quelli configurati).
@@ -89,6 +130,8 @@ final class CoreServiceProvider extends ServiceProvider
         if (! $this->app->runningUnitTests()) {
             $this->app->make(PlatformConfig::class)->apply();
         }
+        // Nella demo nessuna posta esce: ogni mailer diventa «log», dopo le impostazioni della piattaforma.
+        DemoMailGuard::enforce();
 
         // Email e slug senza distinzione tra maiuscole e minuscole: $table->addColumn('citext', 'email').
         PostgresGrammar::macro('typeCitext', fn (): string => 'citext');
@@ -127,7 +170,13 @@ final class CoreServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
+            // Nella demo girano solo i lavori interni (DemoSchedule): a lavori tutti registrati, gli altri si spengono.
+            if (DemoScale::restricted()) {
+                $this->app->booted(static function (Application $app): void {
+                    DemoSchedule::restrict($app->make(Schedule::class));
+                });
+            }
+            $this->commands([MigrateAllCommand::class, DatabaseEmptyCommand::class, DatabaseRevokeGroupCommand::class, DatabaseNarrowPortalCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, DemoCheckEnvCommand::class, SelfTestPurgeCommand::class, PurgeTmpCommand::class, ResetUserTwoFactorCommand::class, NightCommand::class, WebRefreshCommand::class]);
 
             // Code su Postgres: lavoratori a giro di cron, che si fermano quando la coda è vuota o dopo 50 secondi (sul
             // server non ci sono processi sempre attivi). Code per tipo di lavoro e quanti lavoratori: JobQueues.
@@ -152,7 +201,7 @@ final class CoreServiceProvider extends ServiceProvider
                 $schedule->command('queue:prune-failed --hours=168')->dailyAt('05:47');
                 // File di lavoro rimasti da richieste interrotte (copie, archivi, ricevute): via quelli di più di un'ora.
                 $schedule->command('saas:tmp:purge --minutes=60')->everyFifteenMinutes()->withoutOverlapping(10);
-                if (config('saas.demo.enabled') && ! app()->environment('production')) {
+                if (DemoScale::active()) {
                     $schedule->command('saas:demo:reset')->dailyAt('03:30')->withoutOverlapping(30);
                 }
             });

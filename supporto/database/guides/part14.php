@@ -31,7 +31,7 @@ A operazione fatta compare «Rimborso di X,XX € inviato al socio.» e, se il s
 
 - I soldi tornano sul **metodo di pagamento del socio**: in genere entro **pochi giorni lavorativi, fino a 10**, a seconda della banca. L'email al socio (oggetto «nome dell'associazione · Rimborso del tuo pagamento») riporta importo, data del pagamento, motivo e questi tempi, e chiude con i contatti della segreteria.
 - **Non scrive nulla in prima nota.**
-- Restituisce **solo i soldi**: iscrizioni, prenotazioni e crediti collegati al pagamento **restano come sono**. Se vanno tolti, sistemali a mano.
+- Restituisce **solo i soldi**: iscrizioni, prenotazioni e AssoCrediti (o il nome scelto dall'associazione) collegati al pagamento **restano come sono**. Se vanno tolti, sistemali a mano.
 - Se hai già restituito i soldi dal pannello di Stripe o PayPal, **non rimborsare di nuovo da qui**: segna il pagamento con **«Rimborsato»**.
 - Con **SumUp**, **Satispay** e **WooCommerce** il rimborso si fa dal pannello del gestore (con WooCommerce, dall'ordine nel negozio).
 - Se il gestore rifiuta il rimborso, il programma ne spiega il motivo (per esempio la chiave non ha il permesso di fare rimborsi, o il saldo non basta): non cambia nulla.
@@ -107,6 +107,33 @@ MD,
         'body' => <<<'MD'
 Dopo l'aggiornamento del plugin, i dati vengono aggiornati a passi. Finché non finisce, ogni operazione che scrive dati risponde **«Aggiornamento in corso, riprova tra un minuto.»**. Aspetta un minuto e ripeti l'operazione.
 MD,
+    ],
+    [
+        'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'errore-critico-dopo-l-aggiornamento-del-pro',
+        'title' => 'Dopo l\'aggiornamento del Pro il sito mostra un errore critico: cosa faccio?',
+        'body' => <<<'MD'
+Può succedere con il **Pro 1.3.23** se **Associazione Semplice è più vecchia della 1.3.36**, all'attivazione o dopo un aggiornamento del Pro: il sito mostra un errore critico o una pagina 500, e il messaggio tecnico può nominare `can_upgrade_here`. **I tuoi dati non vengono toccati.** Si risolve con l'accesso ai file del sito (FTP o il file manager dell'hosting).
+
+Se puoi, **fai prima una copia dei file** del sito. **Non eliminare il plugin dalla Bacheca**: si rinomina soltanto la cartella, come sotto.
+
+## Prima via: metti il Pro nuovo
+
+1. Sostituisci la cartella `wp-content/plugins/associazionesemplice-pro` con quella del **Pro 1.3.24 o successiva**.
+2. Il sito torna su. Poi aggiorna **Associazione Semplice** alla **1.3.37 o successiva**: il Pro riprende da solo.
+
+## Seconda via: disattiva il Pro un momento
+
+1. Rinomina la cartella `associazionesemplice-pro` in `associazionesemplice-pro-OFF`: WordPress non carica più il Pro e il sito torna su.
+2. Aggiorna **Associazione Semplice** alla **1.3.37 o successiva**, dalla Bacheca o caricando i file.
+3. Rimetti alla cartella il nome originale, `associazionesemplice-pro`.
+4. Se in **Plugin** il Pro risulta disattivato, attivalo.
+5. Aggiorna il Pro alla **1.3.24 o successiva**.
+
+## Per evitarlo
+
+Con il Pro 1.3.24 o successiva e un'Associazione Semplice vecchia l'errore non c'è più: il Pro resta sospeso, compare un avviso e il pulsante porta all'aggiornamento di Associazione Semplice. Se non riesci ad accedere ai file del sito, chiedi aiuto a chi gestisce l'hosting o scrivici dalla pagina di assistenza.
+MD,
+
     ],
     [
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'forma-dell-ente-e-sezione-del-runts',

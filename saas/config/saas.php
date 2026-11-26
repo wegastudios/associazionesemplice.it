@@ -16,6 +16,14 @@ return [
         // Attesa massima di un blocco forte (migrazioni, partizioni, potatura), poi si riprova: tre tentativi in tutto
         // (App\Modules\Core\Contracts\ShortLocks). Dietro un'istruzione in fila si fermano tutte le query sulla tabella.
         'lock_timeout' => env('SAAS_DB_LOCK_TIMEOUT', '3s'),
+
+        // Interruttore di `saas:db:revoke-group` (e del suo lancio a ogni rilascio): spento, il comando non tocca nessun
+        // permesso (il dry-run funziona comunque). Si accende solo dove il titolare ha detto sì. docs/DATABASE.md §8.
+        'revoke_group' => filter_var(env('SAAS_DB_REVOKE_GROUP', false), FILTER_VALIDATE_BOOLEAN),
+
+        // Interruttore di `saas:db:narrow-portal` (azione di manutenzione a mano, mai a ogni rilascio): spento, il comando
+        // non tocca nessun permesso (il dry-run funziona comunque). docs/DATABASE.md §8.
+        'narrow_portal' => filter_var(env('SAAS_DB_NARROW_PORTAL', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'auth' => [
@@ -32,6 +40,8 @@ return [
         // d'ambiente (sviluppo, test e ripiego).
         'vault' => env('SAAS_KEY_VAULT', 'local'),
         'master_key' => env('SAAS_MASTER_KEY'),
+        // Solo per saas:keys:rewrap local-nuova: la chiave locale da cui si parte. Mai da riga di comando; si toglie a lavoro finito.
+        'master_key_old' => env('SAAS_MASTER_KEY_OLD'),
         'service_url' => env('SAAS_KEY_SERVICE_URL'),
         'signing_key' => env('SAAS_KEY_SERVICE_SIGNING_KEY'),
         'timeout' => env('SAAS_KEY_SERVICE_TIMEOUT', '3'),
@@ -65,6 +75,10 @@ return [
     // `saas:health`: con SAAS_HEALTH_STRICT acceso la chiave principale locale e i permessi eccessivi del ruolo fermano il rilascio;
     // spento (sviluppo, dati inventati) restano avvisi. Va acceso insieme alla 2FA e al repository privato, prima dei dati veri.
     'health_strict' => filter_var(env('SAAS_HEALTH_STRICT', false), FILTER_VALIDATE_BOOLEAN),
+
+    // `saas:health`, controllo degli schemi: oltre a public, app, audit, sites, core, portal e a quelli che iniziano per «org_»,
+    // altri schemi attesi (nomi separati da virgola). Vuoto = nessuno.
+    'health_extra_schemas' => array_values(array_filter(array_map('trim', explode(',', (string) env('SAAS_HEALTH_EXTRA_SCHEMAS', ''))))),
 
     // Cartella dei file di manutenzione con permessi 600 (~/saas/shared sul server): vuoto = quella che contiene storage.
     'ops_dir' => env('SAAS_OPS_DIR', ''),
@@ -155,6 +169,14 @@ return [
         ],
     ],
 
+    // Cookie col prefisso __Host- (docs/COOKIE_HOST.md): fino a queste date (ISO, per esempio 2026-12-15) i vecchi cookie
+    // «ricordami» (`remember_web_<hash>`) e `as_socio` (percorso /area) si leggono ancora e passano al nome nuovo alla prima
+    // visita; poi si ignorano e si cancellano. Vuote = nessuna lettura dei vecchi nomi (è anche il passo indietro del rollout).
+    'legacy_cookies' => [
+        'remember_until' => env('SAAS_LEGACY_REMEMBER_UNTIL'),
+        'member_until' => env('SAAS_LEGACY_MEMBER_UNTIL'),
+    ],
+
     // Copia di sicurezza completa (Core\Export\FullExports): si prepara in coda, a riposo è cifrata con la chiave
     // dell'associazione e resta scaricabile per keep_hours ore (PHP la decifra mentre la manda); poi il file si cancella
     // (saas:tmp:purge).
@@ -162,7 +184,8 @@ return [
         'keep_hours' => (int) env('SAAS_EXPORT_KEEP_HOURS', 6),
     ],
 
-    // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
+    // Ambiente demo (docs/PIATTAFORMA.md §6): attiva solo con SAAS_DEMO acceso E APP_ENV=demo (DemoScale::active(), l'unico
+    // punto che lo decide); con qualunque altro ambiente nessun accesso pubblico e nessuna restrizione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [
         'enabled' => filter_var(env('SAAS_DEMO', false), FILTER_VALIDATE_BOOLEAN),
@@ -174,9 +197,25 @@ return [
         'org_slug' => env('SAAS_DEMO_SLUG', 'polisportiva-demo'),
         // Quante persone fisiche ha l'associazione dimostrativa: più sono, più il reset notturno dura (ricevute comprese).
         'people' => env('SAAS_DEMO_PEOPLE', 400),
-        // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
-        'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
+        // Password pubblica dei 5 utenti di prova (titolare@, amministratore@, segreteria@, dipendente@, commercialista@ su
+        // mail_domain). Con la variabile vuota vale la predefinita (mai una password vuota: `?:`, non il secondo argomento di env()).
+        'password' => env('SAAS_DEMO_PASSWORD') ?: 'demo-demo-demo-2026',
         'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demosaas.associazionesemplice.it'),
+        // Limiti della demo pubblica (DemoScale::LIMITS ha i valori di partenza; qui si cambiano). Frequenze per indirizzo IP
+        // in un'ora; «*_extra» = quanto i visitatori possono aggiungere a ciò che l'azzeramento notturno ha scritto;
+        // storage_mb = spazio totale dei file. Superato un limite: «Nella demo hai raggiunto il limite…».
+        'limits' => [
+            'creations_per_hour' => 40,
+            'writes_per_hour' => 200,
+            'people_extra' => 100,
+            'applications_extra' => 50,
+            'movements_extra' => 200,
+            'receipts_extra' => 200,
+            'bookings_extra' => 150,
+            'activities_extra' => 30,
+            'resources_extra' => 20,
+            'storage_mb' => 300,
+        ],
     ],
 
     // Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md): /saas/admin si apre con il token `staff_sso` del portale.

@@ -62,7 +62,7 @@ Oggi gli accessi sono quindi **quattro** (clienti sul portale, staff in vendita 
 
 - Gli **operatori delle associazioni** entrano anch'essi da `/accedi` (consigliato, coerente con «un solo accesso per tutti») o restano nel loro gestionale?
 - Chi è **sia cliente sia staff** con la stessa email: un'identità sola con più ruoli (consigliato).
-- Il secondo livello è **obbligatorio per lo staff** o scelto da ognuno? (Oggi spento in sviluppo; prima dei dati veri va riacceso.)
+- Il secondo livello è **obbligatorio per lo staff** o scelto da ognuno? (In sviluppo può restare spento; prima dei dati veri va acceso.)
 - Il **motore del database di supporto**: lo decide la sessione supporto.
 
 ## 8. Cosa non cambia

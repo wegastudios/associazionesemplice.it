@@ -35,6 +35,25 @@ SIGN_KID="$(cat "${SIGN_KEY%.pem}.kid" 2>/dev/null || true)"
 SIGN_KEY_V2="${PORTALE_SIGN_KEY_V2:-$SIGN_KEY}"
 SIGN_KID_V2="$(cat "${SIGN_KEY_V2%.pem}.kid" 2>/dev/null || true)"
 S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST")
+# Demo su un altro account (facoltativo, in deploy_key.env): DEMO_HOST, DEMO_PORT, DEMO_USER, DEMO_KEY (chiave solo per la demo, mai quella del portale).
+# Con DEMO_HOST le versioni pubblicate si copiano anche là (~/demo-provision/releases/<free|pro>/<versione>.zip) e si lancia update.sh della demo nuova;
+# senza, resta tutto com'è (la demo sullo stesso account del portale legge gli zip dal portale).
+DEMO_HOST="${DEMO_HOST:-}"; DEMO_SHIP=()
+if [ -n "$DEMO_HOST" ]; then
+	D=(ssh -i "${DEMO_KEY:?manca DEMO_KEY}" -p "${DEMO_PORT:?manca DEMO_PORT}" -o BatchMode=yes -o IdentitiesOnly=yes "${DEMO_USER:?manca DEMO_USER}@$DEMO_HOST")
+fi
+# demo_update PRODOTTO:VERSIONE:FILE ...: aggiorna la demo di sempre e, se c'è, quella sul nuovo account.
+demo_update() {
+	"${S[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo non è stata aggiornata (la pubblicazione è andata a buon fine)." >&2
+	[ -n "$DEMO_HOST" ] || return 0
+	local it prod ver file
+	for it in "$@"; do
+		prod="${it%%:*}"; ver="${it#*:}"; ver="${ver%%:*}"; file="${it#*:*:}"
+		"${D[@]}" "mkdir -p ~/demo-provision/releases/$prod && cat > ~/demo-provision/releases/$prod/$ver.zip.tmp && mv ~/demo-provision/releases/$prod/$ver.zip.tmp ~/demo-provision/releases/$prod/$ver.zip" < "$file" \
+			|| { echo "Attenzione: non ho copiato $prod $ver nella demo nuova." >&2; return 0; }
+	done
+	"${D[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo nuova non è stata aggiornata (la pubblicazione è andata a buon fine)." >&2
+}
 [ -f "$SIGN_KEY" ] && [ -n "$SIGN_KID" ] || { echo "Manca la chiave di firma dei pacchetti ($SIGN_KEY) o il suo identificativo." >&2; exit 1; }
 [ -f "$SIGN_KEY_V2" ] && [ -n "$SIGN_KID_V2" ] || { echo "Manca la chiave di firma v2 ($SIGN_KEY_V2) o il suo identificativo." >&2; exit 1; }
 # Prima di caricare qualsiasi zip: le colonne della firma v2 devono esistere nel database (si creano come proprietario, non dal portale).
@@ -78,7 +97,7 @@ if [ "${1:-}" = replace ]; then # eccezionale: stessa versione, nuovo pacchetto 
 	tmp="portale/data/incoming-$P-$$.zip"
 	"${S[@]}" "cat > ~/$tmp" < "$f"
 	"${S[@]}" "cd ~/portale && php bin/release.php replace $P ~/$tmp $(printf '%q' "$NOTE") $SIG $SIGN_KID $V2; rc=\$?; rm -f ~/$tmp; exit \$rc"
-	"${S[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo non è stata aggiornata (la sostituzione è andata a buon fine)." >&2
+	demo_update "$P:$VER:$f"
 	exit 0
 fi
 
@@ -95,6 +114,7 @@ for p in $LIST; do
 	tmp="portale/data/incoming-$p-$$.zip"
 	"${S[@]}" "cat > ~/$tmp" < "$f"
 	"${S[@]}" "cd ~/portale && php bin/release.php $p ~/$tmp $(printf '%q' "$NOTE") $SIG $SIGN_KID $V2; rc=\$?; rm -f ~/$tmp; exit \$rc"
+	DEMO_SHIP+=("$p:$VER:$f")
 done
-# La demo pubblica (associazionesemplice.it/demo) segue sempre le ultime versioni: se non si aggiorna, la pubblicazione resta valida.
-"${S[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo non è stata aggiornata (la pubblicazione è andata a buon fine)." >&2
+# La demo pubblica (demo.associazionesemplice.it) segue sempre le ultime versioni: se non si aggiorna, la pubblicazione resta valida.
+demo_update ${DEMO_SHIP[@]+"${DEMO_SHIP[@]}"}

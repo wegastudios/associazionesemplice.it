@@ -70,6 +70,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Listini :: Quanti prezzi vuoi per eventi e corsi a date: individuale, di gruppo, pacchetti di ingressi | ✓ | ✓ | ✓ |
 | Calendario dell'evento :: Mese e giorno, con selettore della data, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
 | Pagine pubbliche degli eventi :: Una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario (.ics), dati strutturati per Google e prenotazione dei soci direttamente dalla pagina | ✓ | ✓ | ✓ |
+| Prenotazione per più persone dall'area soci :: In un solo modulo il socio prenota per sé, per i suoi ospiti (anche nuovi), per i minori di cui è tutore e per altri soci (cognome e numero di tessera). Vede il totale prima di confermare; si prenotano tutti o nessuno, al massimo 10 persone. Il contributo è a carico di chi prenota | ✓ | ✓ | ✓ |
 | Prenotazione dal sito anche per i non soci :: Chi non è socio si prenota dal sito con un modulo breve e conferma l'indirizzo dall'email; la segreteria vede la richiesta. Per gli eventi a pagamento si versa in anticipo con bonifico istantaneo e si manda la ricevuta (non è un pagamento online) | ✓ | ✓ | ✓ |
 | Prenotazione automatica o su richiesta :: Per ogni evento scegli se la prenotazione è automatica o solo su richiesta, quanti posti si possono chiedere per volta, se ammettere gli ospiti e cosa succede se l'evento viene annullato | ✓ | ✓ | ✓ |
 | Pagina dell'evento completa :: Dove si svolge con collegamento alla mappa, contatti con WhatsApp ed email, evento precedente e successivo, locandina e pulsanti per condividere; gli eventi che si ripetono ogni settimana compaiono con una sola scheda | ✓ | ✓ | ✓ |
@@ -89,6 +90,13 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si restituisce il contributo delle lezioni non tenute | ✓ | ✓ | ✓ |
 | Restituzioni :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
+| Prova gratuita dei corsi :: Giorni di prova registrati dalla scheda del corso; chi si iscrive nello stesso mese paga dal giorno della prova | ✓ | ✓ | ✓ |
+| Primo mese in proporzione :: Chi si iscrive a mese iniziato paga dalla prima lezione vera; ogni corso può scegliere il mese intero | ✓ | ✓ | ✓ |
+| Corsi a lezioni effettive :: Contributo per lezione: il mese costa le lezioni del calendario, fissate a inizio mese | ✓ | ✓ | ✓ |
+| Giorni rossi :: Festività nazionali, festa del patrono e chiusure dell'associazione; ogni corso sceglie se saltarli | ✓ | ✓ | ✓ |
+| Lezione annullata già pagata :: Importo a favore che si scala dal rinnovo (per i soci vale fino alla fine del primo mese dell'anno fiscale dopo), recupero della lezione o restituzione con conto e data | ✓ | ✓ | ✓ |
+| Nome della moneta interna :: L'associazione sceglie come chiamare i crediti dei soci (di partenza AssoCredito), in pagine, email e ricevute | — | ✓ | ✓ |
+| Mensilità pagata in moneta :: Il mese di un corso si paga per intero in moneta, dal socio o dal genitore per il figlio minorenne | — | ✓ | ✓ |
 
 ## Cassa e conti
 

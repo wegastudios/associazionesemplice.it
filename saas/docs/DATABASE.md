@@ -120,6 +120,23 @@ pooler in modalità sessione. `saas:health` lo verifica a ogni rilascio (imposta
 consecutive) e controlla anche ruolo dell'applicazione, RLS attiva e forzata su `app.*`, `audit.*` e `sites.*`, e
 permessi del ruolo (sul database condiviso: i database dedicati si controllano dai test di schema).
 
+**Ruoli di gruppo e oggetti (`saas:health`, voce «oggetti e ruoli di gruppo»).** Su hosting cPanel i ruoli dell'applicazione,
+del proprietario e dei backup sono membri, con ereditarietà, del ruolo di gruppo che possiede il database: non si evita,
+quindi si controlla oggetto per oggetto, su ogni database (solo query di sola lettura sul catalogo, con il ruolo dei backup).
+Segnala, con le regole degli altri controlli sui permessi (errore con `SAAS_HEALTH_STRICT`, avviso senza):
+1. schemi inattesi: oltre a `public`, `app`, `audit`, `sites`, `core`, `portal`, a quelli che iniziano per `org_` e a quelli
+   elencati in `SAAS_HEALTH_EXTRA_SCHEMAS` (nomi separati da virgola);
+2. tabelle, viste, sequenze, funzioni e schemi di proprietà dell'applicazione, dei backup o di un ruolo di gruppo di cui
+   sono membri, cioè non del ruolo proprietario (rimedio: `ALTER ... OWNER TO` con il ruolo proprietario);
+3. permessi espliciti dei ruoli di gruppo su schemi e tabelle (rimedio: `REVOKE`);
+4. `CREATE` sul database o su uno schema da parte dell'applicazione o dei backup, anche ereditato.
+Un'altra voce, «separazione dal ruolo proprietario», è **sempre un ERRORE**, anche senza `SAAS_HEALTH_STRICT`: l'applicazione
+o i backup sono membri del ruolo proprietario (la separazione dei ruoli non esiste).
+Il dettaglio di questi messaggi resta nel file riservato `shared/health-<data>.txt` (rilascio) o nel file di `permessi-db`
+(manutenzione); nel log del rilascio escono solo l'esito e il conteggio, e nessuna risposta HTTP li riporta.
+Quando 1-4 sono in ordine e applicazione o backup possono assumere con `SET ROLE` il ruolo che possiede il database, la
+voce resta verde e `saas:health` stampa una nota «limite noto»: è un'informazione, non un errore.
+
 ## 4. Tipi di dato e indici
 
 - **Importi**: `bigint` in centesimi con `CHECK`. Mai `numeric` o `float` per il denaro.
@@ -279,6 +296,34 @@ Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le r
   `app.member_sessions`).
 - **Dump orario** per database, cifrato prima di uscire dal server con la chiave pubblica dei backup, su uno spazio
   esterno in UE. Prova di ripristino ogni settimana sullo staging ([RILASCIO.md](RILASCIO.md) §3).
+
+### Permessi del ruolo di gruppo
+
+- **Cosa fa** `php artisan saas:db:revoke-group`: con la connessione del proprietario, in una transazione, riporta ai
+  permessi previsti quelli del ruolo di gruppo che possiede il database. Agisce oggetto per oggetto, solo su ciò che il
+  proprietario può togliere (oggetti suoi, voci concesse da lui, CREATE sul database solo con una sua voce diretta,
+  permessi sugli schemi solo se applicazione e backup hanno il proprio accesso diretto); il resto si conta tra i
+  «rimasti». Non tocca CONNECT, i permessi diretti degli altri ruoli né la proprietà degli oggetti. Senza ruolo di
+  gruppo non fa nulla ed esce con 0.
+- **Controlli prima di scrivere**: se un altro ruolo con accesso raggiunge degli oggetti solo tramite il gruppo, o se
+  applicazione e backup non hanno un permesso diretto sulle tabelle, il comando rifiuta e non scrive nulla.
+- **Ruolo del portale**: i suoi permessi diretti sullo schema `portal` sono un elenco esplicito (tabella e verbi, classe
+  `PortalGrants`). Prima di revocare si controlla che ci siano tutti, come voci dirette e non per ereditarietà; ciò che il
+  ruolo raggiunge oltre l'elenco non blocca e viene tolto con il resto. Se il ruolo non esiste il controllo non c'è.
+- **Permessi diretti del portale**: nessuna migrazione e nessun rilascio li cambia. `php artisan saas:db:narrow-portal` li
+  porta all'elenco in una sola transazione: prima concede tutto l'elenco, poi verifica che ogni voce sia diretta e solo
+  dopo toglie ciò che l'elenco non prevede (tabelle fuori elenco e permessi predefiniti); se la verifica fallisce non
+  cambia nulla. `--dry-run` elenca cosa concederebbe e toglierebbe e funziona sempre; senza `--dry-run` agisce solo con
+  `SAAS_DB_NARROW_PORTAL` acceso (spento di default). A mano: azioni `permessi-portale` (prova) e `permessi-portale-esegui`
+  di «SaaS · manutenzione server»; l'uscita va in un file riservato e nel log restano «salvato in», «fatto» o «da rivedere».
+- **Interruttore**: agisce solo con `SAAS_DB_REVOKE_GROUP` acceso (spento di default; spento, senza `--dry-run`,
+  rifiuta con «interruttore spento»). `--dry-run` funziona sempre, non scrive e stampa solo conteggi per tipo.
+- **Uscita**: solo conteggi, mai nomi di ruoli o di oggetti. Esce con 1 per errore, rifiuto o voci rimaste; con
+  `--dry-run` solo per un errore tecnico.
+- **A ogni rilascio**: `deploy/remote.sh` lo lancia dopo le migrazioni e prima del cambio del link `current`, solo con
+  l'interruttore acceso; il dettaglio va in un file riservato sul server e il rilascio non si ferma mai per questo. A
+  mano: azioni `revoca-gruppo` (prova) e `revoca-gruppo-esegui` di «SaaS · manutenzione server».
+- **Avvertenza**: non usare `update_privileges` di cPanel (né «ALL» nel pannello dei privilegi).
 
 ## 9. Moduli (dalle 64 tabelle del plugin)
 

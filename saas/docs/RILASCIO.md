@@ -83,10 +83,37 @@ Con un solo ambiente, la **prova di ripristino** (che non gira dove sta la produ
 chiave privata dei backup) si fa a mano dal computer di chi gestisce, con la coppia di chiavi dei backup in un `.env`
 locale e il database di prova locale: `php artisan saas:backup:restore-test`.
 
-Segreti per ambiente (GitHub → Settings → Environments → `staging` e `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
+**Ogni ambiente si rilascia solo dal ramo `main`**: il workflow rifiuta ogni altro ramo (il passo «Rilascio» non parte).
+Il pacchetto e lo script `remote.sh` che girano sul server vengono dal ramo scelto, quindi un ramo qualunque non deve
+poter arrivare al server nemmeno per prova.
+
+**Regola su GitHub**: l'ambiente `production` ammette solo `main` come ramo. I revisori obbligatori sono una scelta
+del titolare (vedi sotto); lo stato attuale delle impostazioni si verifica nella cartella riservata. Se si crea
+un ambiente `demo` o `staging`: stessa regola, solo `main`
+(Settings → Environments → Deployment branches → Selected branches and tags → `main`).
+
+**Scelta da prendere al lancio** (non adesso): se attivare **Required reviewers** su `production`. Ogni rilascio
+resterebbe fermo finché il titolare non lo approva con un clic; «Prevent self-review» resterebbe spento finché è
+l'unico revisore.
+
+Segreti per ambiente (GitHub → Settings → Environments → `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
 `SAAS_SSH_USER`, `SAAS_SSH_PRIVATE_KEY` (chiave Ed25519 solo per il rilascio, autorizzata solo su quel sub-account),
 `SAAS_SSH_KNOWN_HOSTS` (riga di `ssh-keyscan -p PORTA HOST`, controllata a mano). Le chiavi dell'applicazione non
 passano da GitHub: stanno solo in `shared/.env`.
+
+**Primo rilascio su un database vuoto** (ambiente nuovo, es. la demo). `remote.sh` lancia `php artisan saas:db:empty`
+(sola lettura, connessione del proprietario sul database condiviso: «vuoto» = nessuna tabella `public.migrations` o
+tabella senza righe). Tre casi:
+
+- **vuoto in demo o staging** (`APP_ENV` diverso da `production`): il controllo di salute prima delle migrazioni, che
+  non può riuscire, viene saltato; si esegue `saas:migrate --force` e il controllo di salute gira dopo il cambio del link
+  come sempre. Se quel controllo fallisce non c'è una versione precedente: il link `current` (che prima non esisteva)
+  viene rimosso, i dati restano e il rilascio si ferma con errore; il dettaglio è in `shared/health-<data>.txt`.
+- **vuoto in produzione**: il rilascio si ferma subito, senza migrare. Un database vuoto in produzione è quasi sempre
+  quello sbagliato (`DB_*` in `shared/.env`); si controlla e, se è davvero il primo avvio, si migra a mano.
+- **già in uso**: nessun cambiamento, controllo di salute con `--skip-migrations`, poi le migrazioni.
+
+Se `saas:db:empty` non riesce a leggere il database, il rilascio si ferma.
 
 **Ritorno alla versione precedente**: `~/saas/current/deploy/rollback.sh` (immediato). Le migrazioni non si annullano:
 sono in due tempi, quindi la versione precedente funziona anche con lo schema nuovo.
@@ -184,7 +211,7 @@ Quando serve proprio un rilascio per correggere quel difetto:
 |---|---|
 | Sub-account cPanel di staging con PHP 8.3 (estensioni `pdo_pgsql`, `sodium`, `intl`, `mbstring`, `redis`) | Luca |
 | Database PostgreSQL e tre utenti (applicazione, proprietario, backup), più il database di prova per il ripristino | Luca, da cPanel |
-| **`pg_dump` e `pg_restore` della versione 16** sul server: c'è solo il client 13, che non sa fare il dump di un server 16 | da chiedere a SupportHost |
+| **`pg_dump` e `pg_restore` della versione 16** sul server (il client 13 non sa fare il dump di un server 16) | da chiedere a SupportHost se mancano |
 | Sottodominio di staging con HTTPS, cartella pubblica `saas/current/public` | Luca |
 | Account cPanel separato per il servizio chiavi, con sottodominio HTTPS (`keyservice/README.md`) | Luca |
 | Spazio esterno in UE per i backup, con accesso SFTP a chiave | da scegliere |
@@ -227,11 +254,18 @@ nuovo `ETag`. Nessun segreto in più, nessun cron nuovo.
 
 ## Manutenzione del server: come leggere le uscite
 
-Le azioni del workflow «SaaS · manutenzione server» (`saas/deploy/ops.sh`, lanciato via SSH) scrivono nel log del workflow, che è pubblico, solo esiti, conteggi e stati («impostata», «vuota», «acceso», «spento», «ok», «errore»). Quello che descrive la configurazione del server (versioni, impostazioni, ruoli e database, privilegi, identificativi, indirizzi) non compare nel log: viene salvato in un file di testo sul server, in `shared/`, e nel log resta solo il percorso, ad esempio «misure salvate in …/shared/misure-20261121T103000.txt».
+Le azioni del workflow «SaaS · manutenzione server» (`saas/deploy/ops.sh`, lanciato via SSH) scrivono nel log del workflow, che è pubblico, solo l'esito (ok o errore) e il percorso del file. Ogni stato reale del server (variabili e interruttori, versioni, impostazioni, ruoli e database, privilegi, conteggi, coda, cancellazioni, identificativi, indirizzi) non compare nel log: viene salvato in un file di testo sul server, in `shared/`, e nel log resta solo «<azione>: salvato in …/shared/<azione>-20261121T103000.txt».
 
 - **File**: `<azione>-<data UTC>.txt` (per esempio `misure-20261121T103000.txt`), creato con permessi 600, leggibile solo dall'utente del sub-account. Per ogni azione se ne conservano al massimo 5: i più vecchi si cancellano da soli.
 - **Lettura**: con SSH, mai nel log del workflow: `ssh <utente>@<server> 'cat ~/saas/shared/misure-<data>.txt'` (il percorso esatto è quello scritto nel log; se il sub-account usa un'altra base, vale `$SAAS_BASE`). Per il più recente: `ls -t ~/saas/shared/misure-*.txt | head -1`.
-- **Cosa va su file**: `diagnosi` (client PostgreSQL e ultimi errori), `ciclo-vita` (elenchi di cancellazione e potatura), `prova-cancellazione`, `avvisa-catalogo`, `bozza-listino`, `conta-fotografie` (elenco per associazione), `cancellazioni` (registro, stato per associazione, righe del log), `permessi-backup`, `permessi-db` (controllo di salute ed eventuali errori), `permessi-diagnosi`, `formato-dry-run`, `sblocca-utente`, `prova-recupero` (memoria), `misure` e `db-connection-limit-60` / `db-connection-limit-off` (ripartizione per ruolo).
-- **Limite di connessioni del database** (`db-connection-limit-60`, `db-connection-limit-off`): imposta o toglie il limite di connessioni del solo database del gestionale, col ruolo proprietario. Con `db-connection-limit-60` l'azione misura prima il picco di connessioni (20 campioni in circa 20 secondi) e non applica nulla se picco più un margine di 10 (backup, ripristino, migrazioni al rilascio) supera 60. Nel log compaiono solo esito e numeri («limite connessioni: 60», «picco misurato: N»); la ripartizione per ruolo è nel file `limite-connessioni-<data>.txt` in `shared/`. Il comando inverso è `db-connection-limit-off` (limite -1, nessun limite). Gli altri database e le impostazioni di memoria e di pianificazione non cambiano.
-- **Cosa resta nel log**: l'esito di ogni azione (ok o errore, con lo stesso codice di uscita di prima), i conteggi (per esempio quanti privilegi oltre SELECT, quante cancellazioni eseguite), lo stato delle variabili e degli interruttori, i numeri della coda e la verifica delle catene del registro.
+- **Cosa va su file**: `diagnosi` (stato delle variabili, client PostgreSQL e ultimi errori), `variabili` e `interruttori` (vedi sotto), `ciclo-vita` (elenchi, verifica delle catene, interruttori), `prova-cancellazione`, `avvisa-catalogo`, `bozza-listino`, `conta-fotografie` (elenco per associazione), `cancellazioni` (registro, stato per associazione, righe del log), `coda` (numeri della coda), `verifica-registro`, `permessi-backup`, `permessi-db` (controllo di salute ed eventuali errori), `permessi-diagnosi`, `formato-dry-run`, `sblocca-utente`, `prova-recupero` (memoria), `accendi-ciclo-vita`, `spegni-cancellazione`, `spegni-avvisi`, `imposta-segreto-proxy` e `svuota-proxy-fidati` (stato dopo la modifica), `db-proprieta` (sola lettura, solo SELECT sul catalogo col ruolo proprietario: proprietari del database e degli oggetti, ruoli di gruppo di app/backup/owner, privilegi e chi li ha concessi, privilegi predefiniti, CREATE sul database, RLS e FORCE RLS per tabella, app NOINHERIT), `misure` e `db-connection-limit-60` / `db-connection-limit-off` (picco e ripartizione per ruolo).
+- **`db-proprieta`** gira in una transazione `READ ONLY` con `statement_timeout` di 20 secondi e si chiude con `ROLLBACK`: è in sola lettura anche per il database.
+- **`prova-ip` non è nel workflow**: l'indirizzo IP è un input del workflow e resterebbe visibile nel run pubblico. Si lancia solo via SSH: `ssh <utente>@<server> "bash -s -- prova-ip <indirizzo>" < saas/deploy/ops.sh`. L'input `pg_bin_dir` serve solo a `percorso-pgdump`.
+- **Azione `variabili`** (sola lettura): nel file `variabili-<data>.txt` c'è prima lo stato di ogni variabile del `.env` (mai il valore, salvo interruttori e scelte non segrete; i commenti in riga del `.env`, come `# …`, non contano: una riga con solo un commento è «vuota») e poi la scelta effettiva letta dalla configurazione che l'applicazione ha caricato (per esempio `saas.crypto.vault = remote`, `mail.default = smtp`, `filesystems.disks.backups.driver = sftp`); per host, utenti, chiavi e impronte solo «impostata» o «vuota». `interruttori` fa lo stesso per le sole scelte non segrete, in `interruttori-<data>.txt`.
+- **Limite di connessioni del database** (`db-connection-limit-60`, `db-connection-limit-off`): imposta o toglie il limite di connessioni del solo database del gestionale, col ruolo proprietario. Con `db-connection-limit-60` l'azione misura prima il picco di connessioni (20 campioni in circa 20 secondi) e non applica nulla se picco più un margine di 10 (backup, ripristino, migrazioni al rilascio) supera 60. Nel log compare solo l'esito («limite connessioni: applicato», «NON applicato» o «ERRORE»); picco, limiti e ripartizione per ruolo sono nel file `limite-connessioni-<data>.txt` in `shared/`. Il comando inverso è `db-connection-limit-off` (limite -1, nessun limite). Gli altri database e le impostazioni di memoria e di pianificazione non cambiano.
+- **Cosa resta nel log**: l'esito di ogni azione (ok o errore, con lo stesso codice di uscita di prima) e il percorso del file. Niente conteggi, niente stato di variabili, interruttori, permessi o coda.
+- **Copie del `.env`** (`shared/.env.bak-<AAAAMMGGHHMMSS>`): le azioni che cambiano una variabile (`chiave-catalogo`, `percorso-pgdump`, `imposta-segreto-proxy`, `svuota-proxy-fidati`) ne fanno una copia prima (permessi 600, come il `.env`). La rotazione ne conserva al massimo 2 (le più recenti) e cancella quelle di oltre 7 giorni; l'età si legge dal nome. Tocca solo file con quel nome esatto: mai il `.env` attivo, mai altri file (né in `shared/` né fuori, come `~/wega-support/.env.prima-portal-login`). **La rotazione parte da sola solo dopo l'azione `pulisci-copie-env`**, per non cancellare di sorpresa le copie già presenti: prima di questo passaggio le azioni non cancellano niente.
+  - `copie-env`: sola lettura. Dice se la rotazione automatica è accesa e quali copie cancellerebbe (solo i nomi).
+  - `pulisci-copie-env`: applica la rotazione una volta, accende quella automatica e scrive nel log quante copie ha cancellato. Da lanciare solo col via del titolare dopo aver visto l'elenco di `copie-env`. Con le copie esistenti può cancellarne subito la maggior parte (al massimo restano le 2 più recenti, e solo se non oltre 7 giorni).
+  - Prova: `saas/tests/shell/ops-env-bak.sh` (lanciata dalla CI) esegue la rotazione su una cartella temporanea.
 - **Cosa fanno le azioni**: invariato; è cambiato solo dove finisce l'uscita. I file non vanno copiati altrove né allegati a segnalazioni, e si cancellano a mano quando non servono più.

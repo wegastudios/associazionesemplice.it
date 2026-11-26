@@ -49,13 +49,23 @@ final class Holds {
 					break;
 				}
 			}
-			if ( ! $row || 'booked' !== $row['status'] || (int) $row['paid'] > 0 || self::online_in_progress( $pid, $sid ) ) {
+			$debtor = $row ? ActivityService::debtor_id( $row ) : $pid; // chi deve pagare: chi ha prenotato per altri, o la persona stessa
+			if ( ! $row || 'booked' !== $row['status'] || (int) $row['paid'] > 0 || self::online_in_progress( $debtor, $sid ) || ( $debtor !== $pid && self::online_in_progress( $pid, $sid ) ) ) {
 				continue; // ha già versato (anche in parte) o sta pagando online: il posto resta
 			}
 			Plugin::activities()->cancel_booking( $sid, $pid ); // libera il posto e fa entrare il primo della lista d'attesa
 			Audit::log( 'booking.released', 'activity', (int) $b['activity_id'], array( 'session' => $sid, 'person_id' => $pid, 'hours' => (int) $b['hold_hours'] ) );
 			$person = Plugin::people()->get( $pid );
-			if ( $person && is_email( (string) $person['email'] ) ) {
+			$payer  = $debtor !== $pid ? Plugin::people()->get( $debtor ) : null;
+			if ( $payer ) { // a chi ha prenotato il motivo; a chi era prenotato solo che il posto non c'è più
+				$what = '«' . $b['activity_name'] . '» di ' . Frontend\Views::date_words( (string) $b['session_date'] );
+				if ( is_email( (string) $payer['email'] ) ) {
+					Texts::mail( $payer['email'], Texts::subject( 'Posto liberato: ' . $b['activity_name'] ), 'Ciao ' . $payer['first_name'] . ",\n\nil posto che hai prenotato per " . ( $person ? ActivityService::participant_name( $person, $debtor ) : 'un\'altra persona' ) . ', ' . $what . ', è stato liberato perché il contributo non è arrivato entro ' . Texts::n( (int) $b['hold_hours'], '{n} ora', '{n} ore' ) . ' dalla prenotazione. Se hai già pagato, scrivi subito alla segreteria.' );
+				}
+				if ( $person && MemberType::is_member( (string) $person['type'] ) && is_email( (string) $person['email'] ) ) {
+					Texts::mail( $person['email'], Texts::subject( 'Posto liberato: ' . $b['activity_name'] ), 'Ciao ' . $person['first_name'] . ",\n\nla prenotazione fatta per te per " . $what . ' non è più valida. Se vuoi partecipare, puoi prenotare dall\'area soci (se ci sono ancora posti).' );
+				}
+			} elseif ( $person && is_email( (string) $person['email'] ) ) {
 				Texts::mail(
 					$person['email'],
 					Texts::subject( 'Posto liberato: ' . $b['activity_name'] ),

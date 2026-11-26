@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.23
+Stable tag: 1.3.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,27 @@ The Apple Wallet pass is built on your server and downloaded by the member: the 
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.27 =
+* Nuovo: con gli AssoCrediti (o il nome scelto per la moneta) si pagano anche i mesi dei propri ospiti e il primo mese di un altro socio che si è iscritto a un corso, quando lo paga chi iscrive.
+Da fare dopo l'aggiornamento:
+* Aggiorna anche Associazione Semplice alla 1.3.41, così la moneta funziona anche per gli altri soci.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+= 1.3.26 =
+* Nuovo: la moneta interna ha il nome che sceglie l'associazione (di partenza AssoCredito / AssoCrediti), in tutte le pagine, le email e le ricevute.
+* Nuovo: la mensilità di un corso si può pagare per intero in moneta. La paga il socio dall'area soci, il genitore per il figlio minorenne oppure la segreteria dalla scheda del corso. Annullamenti e cancellazioni restituiscono la moneta con le regole degli euro.
+* Altro: gli avvisi email al socio usano il nome della moneta.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+= 1.3.25 =
+* Nuovo: pagamenti online, ricevute e cassa riconoscono chi paga le prenotazioni fatte per altri.
+* Altro: richiede Associazione Semplice 1.3.39 o successiva.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
+
+= 1.3.24 =
+* Altro: con una versione meno recente di Associazione Semplice il Pro si sospende e avvisa, invece di dare errore.
+Changelog di tutte le versioni: https://associazionesemplice.it/wordpress/changelog
 
 = 1.3.23 =
 * Ottimizzazione: le stesse migliorie di velocità anche per risorse e prenotazioni; aggiornamento del database a tappe.

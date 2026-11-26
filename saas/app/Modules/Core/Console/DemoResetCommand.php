@@ -12,7 +12,7 @@ use Throwable;
 
 /**
  * Azzera l'ambiente demo e lo ricrea con dati finti (docs/PIATTAFORMA.md §6). Cancella TUTTO il database
- * dell'ambiente: parte solo dove SAAS_DEMO è acceso e l'ambiente non è la produzione. Ogni notte alle 03:30.
+ * dell'ambiente: parte solo dove SAAS_DEMO è acceso E APP_ENV è «demo». Ogni notte alle 03:30.
  */
 #[AsCommand(name: 'saas:demo:reset')]
 final class DemoResetCommand extends Command
@@ -24,7 +24,7 @@ final class DemoResetCommand extends Command
     public function handle(DemoEnvironment $demo): int
     {
         if (! $demo->enabled()) {
-            $this->error('La demo non è attiva in questo ambiente (SAAS_DEMO=true, mai in produzione).');
+            $this->error('La demo non è attiva in questo ambiente (servono SAAS_DEMO=true e APP_ENV=demo).');
 
             return self::FAILURE;
         }
@@ -54,6 +54,12 @@ final class DemoResetCommand extends Command
         } else {
             $this->line("File della demo precedente tolti: {$removed}.");
         }
+
+        // Niente di ciò che i visitatori hanno scritto resta oltre la notte: log, file temporanei e cache su disco.
+        $logs = DemoResetGuard::clearLogs(storage_path('logs'), is_string($marker) ? $marker : 'saas-demo');
+        $tmp = DemoResetGuard::clearFiles(storage_path('app/tmp'), is_string($marker) ? $marker : 'saas-demo');
+        $cache = DemoResetGuard::clearFiles(storage_path('framework/cache/data'), is_string($marker) ? $marker : 'saas-demo');
+        $this->line('Log, file temporanei e cache su disco tolti: '.(($logs ?? 0) + ($tmp ?? 0) + ($cache ?? 0)).'.');
 
         try {
             $org = $demo->seed();

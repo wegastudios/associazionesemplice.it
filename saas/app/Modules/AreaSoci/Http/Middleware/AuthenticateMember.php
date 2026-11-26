@@ -7,6 +7,7 @@ namespace App\Modules\AreaSoci\Http\Middleware;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberAccess;
 use App\Modules\Audit\Contracts\ActingMember;
+use App\Modules\Core\Contracts\HostCookies;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Closure;
 use Illuminate\Http\Request;
@@ -19,6 +20,15 @@ final readonly class AuthenticateMember
 
     public const ACTIVE = 'member_active_profile';
 
+    /**
+     * `as_socio` (percorso /area) senza prefisso; `__Host-as_socio` (percorso /) dove c'è HTTPS (Core\Contracts\HostCookies):
+     * un sottodominio fratello non può sostituirlo. Il valore è lo stesso: un codice casuale riconosciuto dal database.
+     */
+    public static function cookieName(Request $request): string
+    {
+        return HostCookies::name(self::COOKIE, $request);
+    }
+
     public function __construct(
         private MemberAccess $access,
         private MemberProfiles $profiles,
@@ -29,7 +39,7 @@ final readonly class AuthenticateMember
     /** @param  Closure(Request): Response  $next */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->cookie(self::COOKIE);
+        $token = $request->cookie(self::cookieName($request));
         $session = is_string($token) ? $this->access->resolve($token) : null;
         $org = $request->attributes->get('member_org');
         if ($session === null || ! is_array($org)) {

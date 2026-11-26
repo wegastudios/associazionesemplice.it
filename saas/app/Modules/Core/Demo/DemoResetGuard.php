@@ -92,6 +92,27 @@ final class DemoResetGuard
         return $removed;
     }
 
+    /**
+     * Toglie i file di log (storage/logs/*.log): i visitatori scrivono dati veri nei moduli e un errore può portarli nel
+     * registro, quindi non devono restare oltre la notte. Solo se la cartella sta sotto la cartella della demo.
+     *
+     * @return int|null file tolti, null se la cartella non sta nella cartella della demo (non si tocca)
+     */
+    public static function clearLogs(string $dir, string $marker): ?int
+    {
+        if ($dir === '' || ! self::under($dir, $marker) || ! is_dir($dir)) {
+            return null;
+        }
+        $removed = 0;
+        foreach (File::glob(rtrim($dir, '/\\').'/*.log') as $file) {
+            if (is_string($file) && File::delete($file)) {
+                $removed++;
+            }
+        }
+
+        return $removed;
+    }
+
     private static function under(string $path, string $marker): bool
     {
         $segments = explode('/', str_replace('\\', '/', $path));

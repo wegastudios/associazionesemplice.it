@@ -107,6 +107,18 @@ final class OrgSchema
         return '"'.self::role(DB::connection(), 'app_role').'"';
     }
 
+    /**
+     * Nome (non quotato, già controllato) del ruolo con cui il portale si collega allo schema `portal`, scritto nella
+     * configurazione del proprietario (`portal_role`, DB_PORTAL_USERNAME); null se non è valido.
+     */
+    public static function portalRole(): ?string
+    {
+        $connection = DB::connection();
+        $role = method_exists($connection, 'getConfig') ? $connection->getConfig('portal_role') : null;
+
+        return is_string($role) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $role) === 1 ? $role : null;
+    }
+
     private static function role(ConnectionInterface $connection, string $key): string
     {
         $role = method_exists($connection, 'getConfig') ? $connection->getConfig($key) : null;

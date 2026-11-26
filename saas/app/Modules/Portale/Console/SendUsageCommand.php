@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
+use App\Modules\Portale\Contracts\UsageHealth;
 use App\Modules\Portale\Usage\UsageReport;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Throwable;
 
 #[AsCommand(name: 'saas:portal:usage')]
 final class SendUsageCommand extends Command
@@ -23,7 +26,22 @@ final class SendUsageCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info('Associazioni comunicate: '.$report->send());
+        try {
+            $result = $report->send();
+        } catch (Throwable $e) {
+            UsageHealth::record(false);
+
+            throw $e;
+        }
+        UsageHealth::record(true);
+        // Una riga per invio in storage/logs/portal-usage.log (lo scheduler ci aggiunge l'uscita): solo conteggi, mai i numeri dei soci.
+        $refs = $result['unknown_refs'] === [] ? '' : ' (ref: '.implode(', ', $result['unknown_refs']).')';
+        $saved = $result['saved'] ?? '?';
+        $unknown = $result['unknown'] ?? '?';
+        $this->info(now()->toIso8601String()." inviate {$result['sent']}, salvate {$saved}, non riconosciute {$unknown}{$refs}");
+        if (($result['unknown'] ?? 0) > 0) {
+            Log::warning('Consumi: il portale non ha riconosciuto alcune associazioni', $result);
+        }
 
         return self::SUCCESS;
     }

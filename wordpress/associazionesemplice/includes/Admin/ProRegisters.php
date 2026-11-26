@@ -129,7 +129,7 @@ final class ProRegisters {
 		}
 		echo '</tr></thead><tbody>';
 		foreach ( $m['people'] as $pid => $name ) {
-			echo '<tr><td>' . esc_html( $name ) . '</td>';
+			echo '<tr><td>' . esc_html( $name ) . ( empty( $m['trial'][ $pid ] ) ? '' : ' <span class="description">(prova)</span>' ) . '</td>';
 			foreach ( $m['dates'] as $d ) {
 				if ( empty( $m['expected'][ $d ][ $pid ] ) ) {
 					echo '<td style="text-align:center">—</td>';
@@ -199,7 +199,7 @@ final class ProRegisters {
 				echo Ui::hidden( 'activity_id', $aid ) . Ui::hidden( 'date', $date ) . '<ul>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				foreach ( $roster as $r ) {
 					$on = $marks ? ! empty( $marks[ (int) $r['id'] ] ) : true; // prima registrazione: tutti presenti, si tolgono gli assenti
-					echo '<li><label><input type="checkbox" name="present[]" value="' . (int) $r['id'] . '"' . checked( $on, true, false ) . '> ' . esc_html( trim( $r['last_name'] . ' ' . $r['first_name'] ) ) . '</label></li>';
+					echo '<li><label><input type="checkbox" name="present[]" value="' . (int) $r['id'] . '"' . checked( $on, true, false ) . '> ' . esc_html( trim( $r['last_name'] . ' ' . $r['first_name'] ) ) . ( empty( $r['trial'] ) ? '' : ' <span class="description">(prova)</span>' ) . '</label></li>';
 				}
 				echo '</ul><p><button class="button button-primary">Registra le presenze</button></p>';
 				Ui::form_close();

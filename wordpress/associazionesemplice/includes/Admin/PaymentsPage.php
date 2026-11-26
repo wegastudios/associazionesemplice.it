@@ -191,7 +191,7 @@ final class PaymentsPage {
 			. '<p><label>' . esc_html( Texts::t( 'Quanto restituire al socio (massimo {importo})? I soldi tornano sul suo metodo di pagamento e il rimborso non si può annullare.', array( 'importo' => Money::format( $info['remaining'] ) ) ) )
 			. '<br><input type="text" name="amount" size="8" inputmode="decimal" placeholder="0,00" autocomplete="off" required> €</label></p>'
 			. '<p><label>' . esc_html( Texts::t( 'Motivo del rimborso (lo leggerà il socio nell\'email):' ) ) . '<br><input type="text" name="reason" class="regular-text" maxlength="200" required></label></p>'
-			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . ' ' . esc_html( Texts::t( 'Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano.' ) ) . '</p>'
+			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . ' ' . esc_html( Texts::t( 'Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e {moneta} collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano.', array( 'moneta' => \AssociazioneSemplice\CoinName::plural() ) ) ) . '</p>'
 			. '<p><label><input type="checkbox" name="ack" value="1" required> ' . esc_html( Texts::t( 'Ho capito: il rimborso non si può annullare' ) ) . '</label></p>'
 			. '<button class="button button-small button-primary">' . esc_html( Texts::t( 'Rimborsa' ) ) . '</button></form></details>';
 	}

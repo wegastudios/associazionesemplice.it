@@ -152,7 +152,7 @@ I permessi si assegnano dalla scheda del socio: contano il ruolo e le cariche ch
 - **Amministratore** del sito: tutto, comprese impostazioni, pagamenti online e copia di sicurezza.
 - **Segreteria**: gestisce soci, attività, incassi, registri e comunicazioni dall'amministrazione, senza essere amministratore del sito e senza accesso alle impostazioni.
 - **Presidente e vicepresidente**: agiscono come la segreteria finché la carica e la tessera sono valide.
-- **Tesoriere**: dall'area soci incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
+- **Tesoriere**: dall'area soci incassa, registra le spese, iscrive nuovi soci e vende gli eventi; entra con il suo accesso al sito, non con quello dei soci. Non vede comunicazioni né impostazioni.
 - **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce avvisi agli iscritti, staff e ingressi.
 - **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff.
 - **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il contributo sul posto.
@@ -348,7 +348,7 @@ Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soc
 
 ## Soci senza utente WordPress
 
-Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress. Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress.
+AssoCrediti (o il nome scelto dall'associazione), risorse e notifiche push funzionano anche per i soci senza utente WordPress. Lo staff di un evento con l'incasso abilitato può addebitare AssoCrediti (o il nome scelto dall'associazione) con il QR anche senza utente WordPress.
 MD,
     ],
 ];

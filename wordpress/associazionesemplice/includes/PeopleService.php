@@ -385,6 +385,16 @@ class PeopleService {
 		return array() === $this->profile_missing( $p );
 	}
 
+	/** Il socio sceglie se altri soci possono prenotare per suo conto (di partenza sì). */
+	public function set_no_booking_by_others( int $person_id, bool $no ): void {
+		$p = $this->get( $person_id );
+		if ( ! $p || (bool) (int) $p['no_booking_by_others'] === $no ) {
+			return;
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'no_booking_by_others' => $no ? 1 : 0, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
+		Audit::log( 'person.booking_by_others', 'person', $person_id, array( 'allowed' => $no ? 0 : 1 ) );
+	}
+
 	/** Segna che il socio deve completare il profilo (si è attivato dal sito) oppure che lo ha fatto. */
 	public function set_profile_due( int $person_id, bool $due ): void {
 		$this->db()->update( Db::t( 'people' ), array( 'profile_due' => $due ? 1 : 0 ), array( 'id' => $person_id ) );
@@ -1034,6 +1044,9 @@ class PeopleService {
 		if ( $this->guests_of( $id ) ) {
 			throw new \InvalidArgumentException( 'Il socio ha degli ospiti collegati: eliminali o spostali prima.' );
 		}
+		if ( Plugin::activities()->has_future_for_others( $id ) ) {
+			throw new \InvalidArgumentException( 'Ha prenotato per altre persone a date future: annulla prima quelle prenotazioni.' );
+		}
 		$this->db()->update(
 			Db::t( 'people' ),
 			array( 'deleted_at' => Db::now(), 'card_number' => null, 'wp_user_id' => null ),
@@ -1041,6 +1054,7 @@ class PeopleService {
 		);
 		Guardians::forget( $id );
 		MemberSession::forget_person( $id ); // sessioni, password e codici di accesso proprio
+		Frontend\Actions::forget_group_draft( $id );
 		Audit::log( 'person.deleted', 'person', $id, array( 'type' => $p['type'] ) );
 	}
 
@@ -1140,6 +1154,20 @@ class PeopleService {
 		if ( $p && MemberType::is_auto_renewed( $p['type'] ) ) {
 			$this->set_founder_membership( $person_id, (string) $p['joined_on'] );
 		}
+	}
+
+	/** Etichetta italiana dell'origine di una tessera (il valore salvato è un codice interno). Un valore sconosciuto si mostra com'è. */
+	public static function membership_source_label( string $source ): string {
+		$labels = array(
+			'manual'      => 'Inserita a mano',
+			'application' => 'Domanda di adesione',
+			'import'      => 'Importata',
+			'import-undo' => 'Importazione annullata',
+			'payment'     => 'Quota incassata',
+			'promo'       => 'Anno in omaggio',
+			'founder'     => 'Socio fondatore',
+		);
+		return $labels[ $source ] ?? $source;
 	}
 
 	/** Il fondatore ha una sola iscrizione che dura N anni (default 99): sempre rinnovata. */

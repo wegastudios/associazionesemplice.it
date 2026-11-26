@@ -145,6 +145,8 @@ final class Db {
 			// Coda di uscita delle email (Mailer): tetto orario del server di posta, ritentativi, urgenti prima dei massivi.
 			'CREATE TABLE IF NOT EXISTS mail_outbox (id VARCHAR(32) PRIMARY KEY, prio VARCHAR(6) NOT NULL, to_addr VARCHAR(190) NOT NULL, subject VARCHAR(255) NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at VARCHAR(19) NOT NULL, done_at VARCHAR(19) NULL, last_error VARCHAR(120) NULL, created_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS saas_outbox (id VARCHAR(32) PRIMARY KEY, org_id VARCHAR(64) NOT NULL, rev INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at VARCHAR(19) NOT NULL, done_at VARCHAR(19) NULL, last_error VARCHAR(120) NULL, created_at VARCHAR(19) NOT NULL)',
+			// Ultimi consumi comunicati dal gestionale per abbonamento (contratto §4.1): solo numeri.
+			'CREATE TABLE IF NOT EXISTS saas_usage (ref VARCHAR(64) PRIMARY KEY, org_id VARCHAR(64) NOT NULL, members INTEGER NOT NULL, operators INTEGER NOT NULL, einvoices_year INTEGER NOT NULL, day VARCHAR(10) NOT NULL, updated_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS seen_jti (jti VARCHAR(64) PRIMARY KEY, exp INTEGER NOT NULL)',
 			// Associazioni del SaaS create dal portale: `ref` è l'identificativo stabile mandato al SaaS, `rev` cresce a ogni messaggio `subscription`.
 			'CREATE TABLE IF NOT EXISTS saas_orgs (ref VARCHAR(64) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, org_id VARCHAR(64) NULL, name VARCHAR(150) NOT NULL, slug VARCHAR(40) NOT NULL, rev INTEGER NOT NULL DEFAULT 0, created_at VARCHAR(19) NOT NULL)',
@@ -294,8 +296,26 @@ final class Db {
 			$this->run( 'INSERT INTO events (provider, event_id, processed_at) VALUES (?,?,?)', array( $provider, $eventId, self::now() ) );
 			return true;
 		} catch ( \PDOException $e ) {
+			if ( self::isDuplicate( $e ) ) {
+				return false;
+			}
+			// Ogni altro errore (permessi, tabella, connessione) NON vuol dire «già elaborato»: si propaga e il chiamante risponde con un errore, così il provider riconsegna.
+			error_log( '[portale] eventi: scrittura non riuscita (SQLSTATE ' . $e->getCode() . ')' );
+			throw $e;
+		}
+	}
+
+	/** Vero se l'errore è una violazione di unicità (riga già presente): PostgreSQL 23505, MySQL 1062, SQLite «UNIQUE constraint failed». */
+	public static function isDuplicate( \PDOException $e ): bool {
+		$state = (string) $e->getCode();
+		if ( '23505' === $state ) {
+			return true;
+		}
+		if ( '23000' !== $state ) {
 			return false;
 		}
+		$drv = isset( $e->errorInfo[1] ) ? (int) $e->errorInfo[1] : 0;
+		return 1062 === $drv || false !== stripos( $e->getMessage(), 'UNIQUE constraint failed' );
 	}
 
 	/** Se l'elaborazione fallisce l'evento va rilasciato, così la riconsegna del provider lo riprova. */

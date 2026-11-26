@@ -90,7 +90,7 @@ Possono farlo **solo gli amministratori del sito e il presidente e il vicepresid
 | **Corsi** | Elenco, scheda, iscrizioni, lezioni, presenze, registro presenze, calendario. | Con Eventi condivide l'elenco «Corsi ed eventi» e il calendario: si aprono se c'è almeno uno dei due. |
 | **Eventi** | Elenco, scheda, prenotazioni, lista d'attesa, check-in, staff, richieste di evento, pagina «Prenota». | Come Corsi. |
 | **Risorse prenotabili** | Sale e attrezzi: schede, prenotazioni, blocchi, assegnazioni, occupazione. | L'incasso di una prenotazione resta di «Incassi». |
-| **Incassi** | Nuovo incasso, cassa per più persone, vendita crediti, controllo dei pagamenti online, ricevute, allegati. | Per scegliere chi paga serve l'Anagrafica, o la ricerca minima (vedi sotto). |
+| **Incassi** | Nuovo incasso, cassa per più persone, vendita di AssoCrediti (o del nome scelto dall'associazione), controllo dei pagamenti online, ricevute, allegati. | Per scegliere chi paga serve l'Anagrafica, o la ricerca minima (vedi sotto). |
 | **Registrazione delle spese** | Nuova spesa, collegare o togliere una spesa da un fondo, allegati. | Come Incassi. |
 | **Emissione dei rimborsi** | Rimborsi ai volontari (richiesta, approvazione, pagamento, file e CSV) e rimborsi dei pagamenti online. | — |
 | **Visualizzazione di fondi, casse e conti** | Cassa, prima nota, conti e fondi, giroconti, rendiconto provvisorio, contabilità, report, rendiconto, 5 per mille, preventivo, ricevuta sostitutiva, conteggio di cassa, annullamenti. In Bacheca i saldi. | Importare la prima nota chiede anche «Importa ed esporta dati» e «Anagrafica soci». |

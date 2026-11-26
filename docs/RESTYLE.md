@@ -49,7 +49,7 @@ Stato di partenza: gratuito 1.3.15, Pro 1.3.6 (API 18), pubblicati.
 4. **Tastiera**: giro con Tab e Maiusc+Tab su ogni schermata toccata; focus sempre visibile (`outline` 2 px indaco, offset 2); foglio apribile e chiudibile con tastiera (Esc), il focus torna al pulsante.
 5. **Movimento**: con `prefers-reduced-motion` nessuna transizione (stesso blocco del SaaS).
 6. **Regressioni**: `phpunit`, `tests/smoke*.php`, `phpcs`; **Plugin Check a zero errori e zero avvisi per gratuito e Pro** (si legge il log del job, non basta il verde). Cura speciale per: font (`@font-face` con URL del plugin), SVG in linea e `wp_kses`, uscite sempre protette.
-7. **Prova su staging** (= demo, `associazionesemplice.it/demo`) con `update.sh` a ogni rilascio; mai `reset.sh` senza chiedere. Controllo con il tema del sito demo e con almeno un tema a blocchi e uno classico, e con Elementor per l'area soci.
+7. **Prova su staging** (= demo, `demo.associazionesemplice.it`) con `update.sh` a ogni rilascio; mai `reset.sh` senza chiedere. Controllo con il tema del sito demo e con almeno un tema a blocchi e uno classico, e con Elementor per l'area soci.
 8. **Compatibilità**: con l'interruttore spento l'HTML e il CSS visibili restano quelli di oggi (si confronta uno screenshot prima/dopo di cinque pagine campione). Con l'interruttore acceso, prima di tutto non si rompe niente di funzionale (moduli, `data-confirm`, `data-label`, ancore).
 9. **Stesse regole di sicurezza**: ogni nuovo helper che stampa HTML esce con `esc_*`/`wp_kses`; nessun nuovo parametro in ingresso; nessuna richiesta esterna.
 

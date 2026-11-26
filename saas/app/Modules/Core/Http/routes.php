@@ -8,6 +8,7 @@ use App\Modules\Core\Http\Controllers\ExportController;
 use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
 use App\Modules\Core\Http\Controllers\ProfileController;
+use App\Modules\Core\Http\Controllers\RobotsController;
 use App\Modules\Core\Http\Controllers\SetupController;
 use App\Modules\Core\Http\Controllers\SuspendedController;
 use App\Modules\Core\Http\Controllers\TwoFactorEmailResetController;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Route;
  *
  * Catena del gestionale: auth → two-factor (obbligatoria) → operator (associazione e OrgContext).
  */
+
+// robots.txt senza sessione né cookie: nella demo nega tutto (RobotsController).
+Route::get('/robots.txt', RobotsController::class)->name('robots');
 
 Route::middleware('web')->group(function (): void {
     Route::redirect('/', '/gestionale');

@@ -90,7 +90,8 @@ demo_step( 'pagine', function () {
 			. '</div><!-- /wp:columns -->'
 			. '<!-- wp:shortcode -->[asem_demo_confronto]<!-- /wp:shortcode -->'
 			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->'
-			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><strong>Ti è piaciuta?</strong> <a href="https://associazionesemplice.it/free">Ottieni la licenza gratuita</a>: crei il tuo account, accedi al supporto e alle demo dei piani Pro.</p><!-- /wp:paragraph -->';
+			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><strong>Ti è piaciuta?</strong> <a href="https://associazionesemplice.it/free">Ottieni la licenza gratuita</a>: crei il tuo account, accedi al supporto e alle demo dei piani Pro.</p><!-- /wp:paragraph -->'
+			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small>Le immagini degli eventi sono generate con l\'intelligenza artificiale.</small></p><!-- /wp:paragraph -->';
 		$home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice', 'post_name' => 'demo', 'post_content' => $content ) );
 		// Menu del sito: solo ciò che serve a chi prova.
 		$nav = '';

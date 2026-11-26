@@ -7,7 +7,10 @@ namespace App\Modules\AreaSoci\Http\Controllers;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberAccess;
+use App\Modules\Core\Contracts\DemoScale;
+use App\Modules\Core\Contracts\HostCookies;
 use App\Modules\Core\Contracts\Input;
+use DateTimeInterface;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,6 +37,7 @@ final readonly class AccessController
             'step' => $request->session()->get('member_login_step', 'email'),
             'email' => $request->session()->get('member_login_email', ''),
             'message' => $request->session()->get('member_login_message'),
+            'demoMember' => DemoScale::memberEntryOpen(self::org($request)['slug']),
         ]);
     }
 
@@ -88,7 +92,7 @@ final readonly class AccessController
         $this->access->close($this->current->require()['session']);
         $request->session()->invalidate();
 
-        return redirect('/area/accesso')->withCookie(Cookie::create(AuthenticateMember::COOKIE)->withPath('/area')->withExpires(1));
+        return self::forgetMemberCookies($request, redirect('/area/accesso'));
     }
 
     public function logoutAll(Request $request): RedirectResponse
@@ -96,7 +100,7 @@ final readonly class AccessController
         $this->access->closeAll($this->current->require()['person']);
         $request->session()->invalidate();
 
-        return redirect('/area/accesso')->withCookie(Cookie::create(AuthenticateMember::COOKIE)->withPath('/area')->withExpires(1))
+        return self::forgetMemberCookies($request, redirect('/area/accesso'))
             ->with('member_login_message', 'Uscita fatta da tutti i dispositivi.');
     }
 
@@ -116,9 +120,24 @@ final readonly class AccessController
         $token = $this->access->open($personId, $email, $request->userAgent());
         $request->session()->regenerate();
         $request->session()->forget(AuthenticateMember::ACTIVE);
-        $cookie = Cookie::create(AuthenticateMember::COOKIE, $token, now()->addDays(MemberAccess::MAX_DAYS), '/area', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
 
-        return redirect('/area')->withCookie($cookie);
+        return redirect('/area')->withCookie(self::sessionCookie($request, $token, now()->addDays(MemberAccess::MAX_DAYS)));
+    }
+
+    /** Il cookie dell'accesso. Con il prefisso __Host- il percorso deve essere «/» (Core\Contracts\HostCookies); altrimenti resta «/area» come prima. */
+    public static function sessionCookie(Request $request, string $token, DateTimeInterface $expires): Cookie
+    {
+        return Cookie::create(AuthenticateMember::cookieName($request), $token, $expires, HostCookies::eligible($request) ? '/' : '/area', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
+    }
+
+    /** Cancella il cookie dell'accesso con entrambi i nomi (quello col prefisso e quello di prima, che ha un altro percorso). */
+    private static function forgetMemberCookies(Request $request, RedirectResponse $response): RedirectResponse
+    {
+        if (HostCookies::eligible($request)) {
+            $response->withCookie(Cookie::create(AuthenticateMember::cookieName($request))->withPath('/')->withExpires(1)->withSecure(true));
+        }
+
+        return $response->withCookie(Cookie::create(AuthenticateMember::COOKIE)->withPath('/area')->withExpires(1));
     }
 
     private function throttle(string $key, int $max, int $seconds): void

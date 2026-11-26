@@ -15,25 +15,11 @@ final class Attendance {
 
 	/** Date in cui si tiene l'attività tra $from e $to (incluse): lezioni dei corsi o date degli eventi (non annullate). @return string[] */
 	public static function lesson_dates( array $a, string $from, string $to ): array {
-		$dates = array();
 		if ( ActivityKind::uses_sessions( $a['kind'] ) ) {
 			$rows = self::db()->get_col( self::db()->prepare( 'SELECT session_date FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d AND cancelled_at IS NULL AND session_date BETWEEN %s AND %s ORDER BY session_date', (int) $a['id'], $from, $to ) ) ?: array();
 			return array_values( array_unique( array_map( 'strval', $rows ) ) );
 		}
-		foreach ( ActivityService::lessons( $a ) as $s ) {
-			if ( 'single' === $s['type'] ) {
-				if ( $s['date'] >= $from && $s['date'] <= $to ) {
-					$dates[] = $s['date'];
-				}
-				continue;
-			}
-			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
-			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-				$dates[] = $d;
-			}
-		}
-		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to ); // lezioni annullate o spostate
+		return CourseCalendar::dates( $a, $from, $to );
 	}
 
 	public static function is_lesson_date( array $a, string $date ): bool {
@@ -50,8 +36,19 @@ final class Attendance {
 			return $db->get_results( $db->prepare( $sql, (int) $a['id'], $date ), ARRAY_A ) ?: array();
 		}
 		$ym  = substr( $date, 0, 7 );
+		// anche chi è in prova quel giorno, riconoscibile nell'elenco
+		$in  = $db->get_results( $db->prepare( "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number, 1 AS trial FROM $p p JOIN " . Db::t( 'trials' ) . ' t ON t.person_id = p.id WHERE p.deleted_at IS NULL AND t.activity_id = %d AND t.trial_date = %s', (int) $a['id'], $date ), ARRAY_A ) ?: array();
 		$sql = "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'enrollments' ) . ' e ON e.person_id = p.id WHERE p.deleted_at IS NULL AND e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s) ORDER BY p.last_name, p.first_name';
-		return $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array();
+		$out = array();
+		foreach ( array_merge( $in, $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array() ) as $r ) {
+			$out[ (int) $r['id'] ] = $r; // chi si è poi iscritto nel mese compare da iscritto
+		}
+		if ( $in ) {
+			uasort( $out, function ( $x, $y ) {
+				return strcasecmp( $x['last_name'] . ' ' . $x['first_name'], $y['last_name'] . ' ' . $y['first_name'] );
+			} );
+		}
+		return array_values( $out );
 	}
 
 	/**
@@ -64,15 +61,19 @@ final class Attendance {
 		$people = array();
 		$marks  = array();
 		$exp    = array();
+		$trial  = array();
 		foreach ( $dates as $d ) {
 			foreach ( self::roster( $a, $d ) as $r ) {
 				$people[ (int) $r['id'] ] = trim( $r['last_name'] . ' ' . $r['first_name'] );
 				$exp[ $d ][ (int) $r['id'] ] = true;
+				if ( ! empty( $r['trial'] ) ) {
+					$trial[ (int) $r['id'] ] = true;
+				}
 			}
 			$marks[ $d ] = self::marks( (int) $a['id'], $d );
 		}
 		asort( $people );
-		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp );
+		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp, 'trial' => $trial );
 	}
 
 	/** Segni già registrati per quella data: person_id => presente? Vuoto se la lezione non è ancora stata registrata. @return array<int,bool> */

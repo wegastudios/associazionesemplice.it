@@ -11,6 +11,7 @@ final class LessonExceptions {
 
 	const CANCEL = 'cancel';
 	const MOVE   = 'move';
+	const KEEP   = 'keep'; // la lezione si tiene anche se il giorno è festivo o di chiusura
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -19,6 +20,9 @@ final class LessonExceptions {
 	/** Regole pure: sistema le date di un corso con le eccezioni (le annullate e le spostate spariscono, le nuove date di spostamento si aggiungono). @param string[] $dates @param array[] $exceptions */
 	public static function adjust_dates( array $dates, array $exceptions, string $from, string $to ): array {
 		foreach ( $exceptions as $e ) {
+			if ( self::KEEP === $e['action'] ) {
+				continue;
+			}
 			$dates = array_values( array_diff( $dates, array( (string) $e['lesson_date'] ) ) );
 			if ( self::MOVE === $e['action'] && ! empty( $e['new_date'] ) && $e['new_date'] >= $from && $e['new_date'] <= $to ) {
 				$dates[] = (string) $e['new_date'];
@@ -31,13 +35,20 @@ final class LessonExceptions {
 
 	/** Le eccezioni che toccano il periodo (la data originale o quella nuova cade tra $from e $to). @return array[] */
 	public static function between( string $from, string $to, ?int $activity_id = null ): array {
+		if ( $activity_id ) { // le eccezioni del periodo si leggono una volta per tutti i corsi (ricordate per la richiesta, svuotate a ogni scrittura)
+			$key = $from . '|' . $to;
+			if ( ! RequestMemo::has( 'lesson_exceptions', $key ) ) {
+				$map = array();
+				foreach ( self::between( $from, $to ) as $e ) {
+					$map[ (int) $e['activity_id'] ][] = $e;
+				}
+				RequestMemo::put( 'lesson_exceptions', $key, $map, array( Db::t( 'lesson_exceptions' ) ) );
+			}
+			return RequestMemo::get( 'lesson_exceptions', $key )[ $activity_id ] ?? array();
+		}
 		$db  = self::db();
 		$sql = 'SELECT * FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE ((lesson_date BETWEEN %s AND %s) OR (new_date IS NOT NULL AND new_date BETWEEN %s AND %s))';
 		$arg = array( $from, $to, $from, $to );
-		if ( $activity_id ) {
-			$sql  .= ' AND activity_id = %d';
-			$arg[] = $activity_id;
-		}
 		return $db->get_results( $db->prepare( $sql . ' ORDER BY lesson_date', $arg ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
 	}
 
@@ -74,9 +85,7 @@ final class LessonExceptions {
 			if ( (int) $s['day'] !== $day ) {
 				continue;
 			}
-			$lo = max( $date, (string) ( $s['from'] ?: $date ) );
-			$hi = min( $last, (string) ( $s['until'] ?: $last ) );
-			foreach ( Schedule::weekly_dates( $lo, $hi, $day ) as $d ) {
+			foreach ( CourseCalendar::slot_dates( $s, $date, $last ) as $d ) {
 				$all[] = $d;
 			}
 		}
@@ -98,10 +107,32 @@ final class LessonExceptions {
 		self::save( $activity_id, $date, self::MOVE, $new_date, $start, $end, $note );
 	}
 
-	/** Rimette la lezione com'era. */
+	/** La lezione si tiene anche se il giorno è festivo o di chiusura. @throws \InvalidArgumentException */
+	public static function keep( int $activity_id, string $date, string $note = '' ): void {
+		$a = Plugin::activities()->get( $activity_id );
+		if ( ! $a || ! self::valid_date( $date ) || ! isset( CourseCalendar::red_lessons( $a, $date, $date )[ $date ] ) ) {
+			throw new \InvalidArgumentException( 'In quel giorno non c\'è una lezione saltata per festività o chiusura.' );
+		}
+		self::save( $activity_id, $date, self::KEEP, '', '', '', $note );
+	}
+
+	/** Le lezioni di un anno fiscale chiuso non si cambiano: rimborsi e quote di quei mesi dipendono dal calendario. @throws \InvalidArgumentException */
+	private static function assert_open( string ...$dates ): void {
+		foreach ( $dates as $d ) {
+			if ( '' !== $d ) {
+				YearLock::assert_date_open( $d );
+			}
+		}
+	}
+
+	/** Rimette la lezione com'era. @throws \InvalidArgumentException */
 	public static function restore( int $activity_id, string $date ): void {
+		$moved = (string) self::db()->get_var( self::db()->prepare( 'SELECT new_date FROM ' . Db::t( 'lesson_exceptions' ) . ' WHERE activity_id = %d AND lesson_date = %s', $activity_id, $date ) );
+		self::assert_open( $date, $moved );
+		CourseCredits::assert_changeable( $activity_id, $date );
 		$n = self::db()->delete( Db::t( 'lesson_exceptions' ), array( 'activity_id' => $activity_id, 'lesson_date' => $date ) );
 		if ( $n ) {
+			CourseCredits::sync( $activity_id, $date );
 			Audit::log( 'lesson.restored', 'activity', $activity_id, array( 'date' => $date ) );
 		}
 	}
@@ -126,6 +157,10 @@ final class LessonExceptions {
 		if ( ! self::valid_time( $start ) || ! self::valid_time( $end ) ) {
 			throw new \InvalidArgumentException( 'Orario non valido (scrivi ore e minuti, ad esempio 18:30).' );
 		}
+		self::assert_open( $date, $new_date );
+		if ( self::CANCEL !== $action ) {
+			CourseCredits::assert_changeable( $activity_id, $date );
+		}
 		$row = array(
 			'activity_id' => $activity_id,
 			'lesson_date' => $date,
@@ -143,6 +178,7 @@ final class LessonExceptions {
 		} else {
 			$db->insert( Db::t( 'lesson_exceptions' ), $row );
 		}
-		Audit::log( self::CANCEL === $action ? 'lesson.cancelled' : 'lesson.moved', 'activity', $activity_id, array( 'date' => $date, 'to' => $new_date ) );
+		CourseCredits::sync( $activity_id, $date ); // corso a lezioni: lezione annullata in un mese già fissato
+		Audit::log( self::CANCEL === $action ? 'lesson.cancelled' : ( self::KEEP === $action ? 'lesson.kept' : 'lesson.moved' ), 'activity', $activity_id, array( 'date' => $date, 'to' => $new_date ) );
 	}
 }

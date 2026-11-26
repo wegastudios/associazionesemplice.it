@@ -23,10 +23,14 @@ dataset('scritture della demo', [
     'verifica ricevute' => ['post', '/gestionale/verifica-ricevute/fissa'],
     'chiusura anno fiscale' => ['post', '/gestionale/esercizi/2025/chiudi'],
     'riapertura anno fiscale' => ['post', '/gestionale/esercizi/2025/riapri'],
+    'nome degli utenti' => ['put', '/gestionale/profilo/nome'],
+    'chiusura del conto' => ['post', '/gestionale/conti/0190a8e0-0000-7000-8000-000000000001/chiudi'],
+    'riapertura del conto' => ['post', '/gestionale/conti/0190a8e0-0000-7000-8000-000000000001/riapri'],
+    'commissione del conto' => ['post', '/gestionale/conti/0190a8e0-0000-7000-8000-000000000001/commissione'],
 ]);
 
 it('nella demo rifiuta le scritture che toccherebbero tutti i visitatori', function (string $method, string $url): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     $user = $this->createUser('titolare@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 
@@ -35,14 +39,15 @@ it('nella demo rifiuta le scritture che toccherebbero tutti i visitatori', funct
     expect($user->refresh()->email)->toBe('titolare@example.com');
 })->with('scritture della demo');
 
-it('nella demo il resto del profilo e la lettura delle stesse pagine restano liberi', function (): void {
-    config(['saas.demo.enabled' => true]);
+it('nella demo la lettura delle pagine resta libera e il nome degli utenti non si cambia', function (): void {
+    demoOn();
     $user = $this->createUser('titolare@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+    $name = $user->name;
 
-    $this->actingAs($user)->put('/gestionale/profilo/nome', ['name' => 'Anna Rossi'])->assertSessionHasNoErrors();
+    $this->actingAs($user)->put('/gestionale/profilo/nome', ['name' => 'Anna Rossi'])->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
     $this->get('/gestionale/profilo')->assertOk();
-    expect($user->refresh()->name)->toBe('Anna Rossi');
+    expect($user->refresh()->name)->toBe($name);
 });
 
 it('fuori dalla demo non cambia nulla', function (): void {
@@ -54,10 +59,14 @@ it('fuori dalla demo non cambia nulla', function (): void {
     Notification::fake();
     $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors()->assertSessionHas('status');
     Notification::assertSentOnDemand(EmailChangeNotification::class);
+
+    // Fuori dalla demo il nome si cambia e i conti si chiudono: nessuna restrizione.
+    $this->actingAs($user)->put('/gestionale/profilo/nome', ['name' => 'Anna Rossi'])->assertSessionHasNoErrors();
+    expect($user->refresh()->name)->toBe('Anna Rossi');
 });
 
 it('nella demo una rotta di scrittura mai vista viene rifiutata, una sotto un\'azione permessa passa', function (): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     Route::middleware('web')->group(function (): void {
         Route::post('/gestionale/inventata-domani', fn () => response('fatto'));
         Route::post('/gestionale/configurazione/passo-nuovo', fn () => response('fatto'));
@@ -74,7 +83,7 @@ it('nella demo una rotta di scrittura mai vista viene rifiutata, una sotto un\'a
 });
 
 it('nella demo lo scarico della copia è chiuso e l\'amministrazione della piattaforma non esiste', function (): void {
-    config(['saas.demo.enabled' => true]);
+    demoOn();
     $user = $this->createUser('titolare@example.com', twoFactor: true);
     $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
 

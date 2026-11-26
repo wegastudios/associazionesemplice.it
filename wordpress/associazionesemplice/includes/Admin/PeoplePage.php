@@ -432,7 +432,7 @@ final class PeoplePage {
 				} ) );
 				$note = '<br><span class="description">Sostituita dalla tessera ' . esc_html( $by ? (string) $by[0]['social_year'] : '' ) . ': resta registrata e i pagamenti non cambiano.</span>';
 			}
-			echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . $note . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . $note . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( \AssociazioneSemplice\PeopleService::membership_source_label( (string) $m['source'] ) ) . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		}
@@ -744,6 +744,9 @@ final class PeoplePage {
 	private static function panel_activities( array $p ): void {
 		$statuses = Plugin::activities()->status_for_person( (int) $p['id'] );
 		echo '<div class="asem-card"><h2>Attività e pagamenti</h2>';
+		foreach ( \AssociazioneSemplice\Trials::of_person( (int) $p['id'] ) as $t ) {
+			echo '<p class="description">' . esc_html( 'Prova gratuita: ' . $t['activity_name'] . ', il ' . Ui::date( (string) $t['trial_date'] ) . '.' ) . '</p>';
+		}
 		if ( ! $statuses ) {
 			echo '<p class="description">Non è iscritto a nessuna attività. Si iscrive dalla scheda dell\'attività.</p></div>';
 			return;

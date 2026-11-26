@@ -20,6 +20,7 @@ final class ProData {
 		add_filter( 'asem_activity_errors', array( __CLASS__, 'activity_errors' ), 10, 3 );
 		add_filter( 'asem_session_errors', array( __CLASS__, 'session_errors' ), 10, 3 );
 		add_filter( 'asem_booking_errors', array( __CLASS__, 'booking_errors' ), 10, 3 );
+		add_filter( 'asem_lessons_with_records', array( __CLASS__, 'lessons_with_records' ), 10, 3 );
 		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
 		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
 		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
@@ -121,6 +122,26 @@ final class ProData {
 		$db = Db::db();
 		$db->delete( Db::t( 'attendance' ), array( 'activity_id' => $activity_id ) );
 		$db->delete( Db::t( 'woo_links' ), array( 'kind' => 'activity', 'ref_id' => $activity_id ) );
+	}
+
+	/** Le date, tra quelle indicate, in cui il corso ha già le presenze segnate. @param string[] $out @param string[] $dates @return string[] */
+	public static function lessons_with_records( $out, $activity_id, $dates ): array {
+		$out   = (array) $out;
+		$dates = array_values( array_map( 'strval', (array) $dates ) );
+		if ( ! $dates ) {
+			return $out;
+		}
+		$key = implode( ',', $dates );
+		if ( ! RequestMemo::has( 'lesson_records', $key ) ) {
+			$db    = Db::db();
+			$map   = array();
+			$marks = implode( ',', array_fill( 0, count( $dates ), '%s' ) );
+			foreach ( $db->get_results( $db->prepare( 'SELECT DISTINCT activity_id, lesson_date FROM ' . Db::t( 'attendance' ) . " WHERE lesson_date IN ($marks)", $dates ), ARRAY_A ) ?: array() as $r ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- tabella interna, segnaposto generati
+				$map[ (int) $r['activity_id'] ][] = (string) $r['lesson_date'];
+			}
+			RequestMemo::put( 'lesson_records', $key, $map, array( Db::t( 'attendance' ) ) );
+		}
+		return array_merge( $out, RequestMemo::get( 'lesson_records', $key )[ (int) $activity_id ] ?? array() );
 	}
 
 	/** Salvata un'attività: crediti previsti e risorsa collegata (se ci sono prenotazioni già presenti sulla risorsa, un avviso). */
