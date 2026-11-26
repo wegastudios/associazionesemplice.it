@@ -2100,7 +2100,9 @@ check( 'webhook: duplicato → 200 senza rifare il lavoro; lavoro fallito → 50
 	&& 500 === $onceEv->invoke( $whOk, 'stripe', 'evt_z', function () { throw new RuntimeException( 'x' ); } ) && $evDb->claimEvent( 'stripe', 'evt_z' ) );
 $ratePdo = testDb();
 migrated( $ratePdo );
-check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', '2026112509', 1 ) );
+// Ora e secondo fissi (il secondo non è multiplo di 16): la pulizia delle ore vecchie, che scatta ogni 16 secondi, non può cancellare il contenitore a metà prova.
+$rateNow = 1796000001;
+check( 'limiti: il primo posto si prende, oltre il massimo no', Portale\RateLimit::take( $ratePdo, 'prova-dup', gmdate( 'YmdH', $rateNow ), 1, $rateNow ) && ! Portale\RateLimit::take( $ratePdo, 'prova-dup', gmdate( 'YmdH', $rateNow ), 1, $rateNow ) );
 check( 'consumi: un invio più recente aggiorna', 50 === (int) $cdb->one( 'SELECT members FROM saas_usage WHERE ref = ?', array( $uref ) )['members'] );
 
 $cprev = Http::$transport;
