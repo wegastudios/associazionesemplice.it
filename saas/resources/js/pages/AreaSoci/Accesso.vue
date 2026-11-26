@@ -1,10 +1,16 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import { onMounted } from 'vue';
 
 const props = defineProps({ orgName: String, step: String, email: String, message: String, demoMember: { type: Boolean, default: false } });
 const ask = useForm({ email: props.email ?? '' });
 // Solo sulla demo: entra come un socio inventato, senza email né codice.
 const demo = useForm({});
+// Dal pulsante della pagina di accesso del gestionale (?demo=entra) si entra con un clic solo: il modulo parte da sé, da questa
+// pagina, che ha già impostato il proprio token CSRF (un POST diretto dal gestionale userebbe quello dell'altra sessione).
+onMounted(() => {
+    if (props.demoMember && new URLSearchParams(window.location.search).get('demo') === 'entra') demo.post('/area/accesso/demo');
+});
 const code = useForm({ email: props.email ?? '', code: '' });
 const field = 'field';
 </script>
