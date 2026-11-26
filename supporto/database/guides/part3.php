@@ -49,7 +49,10 @@ Con Pro, sport e disciplina compaiono nel file per i portali degli enti: nelle c
 
 - **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché non disdici il rinnovo dell'iscritto. La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.
 - **Pagamento unico**: il contributo è il totale (per esempio «10 incontri a 120 €»), dovuto all'iscrizione e versabile anche a rate. Se elimini l'iscrizione prima di qualunque pagamento, non è dovuto nulla.
+- **A lezioni effettive**: il contributo è il prezzo di una lezione e ogni mese costa le lezioni del calendario. Vedi [Corsi a lezioni effettive](guida:corsi-a-lezioni-effettive).
 - **Pagamento trimestrale**: il contributo si paga ogni trimestre. I **promemoria mensili** saltano questi corsi.
+
+Chi si iscrive a mese iniziato a un corso con rinnovo mensile può pagare in proporzione alle lezioni che restano, e un corso può offrire giorni di prova gratuiti: vedi [Prova gratuita e primo mese dei corsi](guida:prova-gratuita-e-primo-mese-dei-corsi).
 
 ## Varianti del contributo
 
@@ -114,7 +117,7 @@ Le **singole lezioni** di un corso si possono **annullare** o **spostare**, per 
 
 Con la spunta gli iscritti ricevono un avviso come «La lezione di … del … è annullata» o «è spostata al …». L'avviso parte solo se chi opera può mandare avvisi per quel corso: se non parte, l'annullamento o lo spostamento resta comunque e il messaggio te lo dice.
 
-Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo e il pulsante **Ripristina**, che rimette la lezione com'era. **Le quote non cambiano**. L'annullamento di lezioni **non registra rimborsi**: se serve, si restituisce a mano. Calendario, presenze e promemoria seguono le date nuove.
+Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo e il pulsante **Ripristina**, che rimette la lezione com'era. **Le quote non cambiano**. L'annullamento di lezioni **non registra rimborsi**: se serve, si restituisce a mano. Fa eccezione un corso **a lezioni effettive** con il mese già pagato: chi aveva pagato ha un importo a favore (vedi [Lezione annullata già pagata](guida:lezione-annullata-gia-pagata)). Calendario, presenze e promemoria seguono le date nuove.
 
 ## Gli iscritti
 
@@ -425,6 +428,209 @@ Chi ha prenotato vede in **«Prenotazioni fatte per altri soci»** i prenotati c
 - Se usi il Pro e non l'hai aggiornato, la sezione **«Altri soci»** non compare e in amministrazione vedi l'avviso **«Aggiorna Associazione Semplice Pro…»**: aggiorna il Pro.
 
 Per la prenotazione di una sola persona leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'prova-gratuita-e-primo-mese-dei-corsi',
+        'title' => 'Prova gratuita e primo mese dei corsi',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Questa guida spiega due scelte di ogni corso: i **giorni di prova gratuiti** e cosa paga chi si iscrive a **mese iniziato**.
+
+## La prova gratuita
+
+1. Apri il corso da **Corsi ed eventi** e vai nei dati del corso.
+2. In **«Giorni di prova gratuiti»** scrivi quanti giorni di prova offri. **0** vuol dire nessuna prova.
+3. Quando una persona fa la prova, nella scheda del corso apri il riquadro **«Prove gratuite»**, scegli la persona (o un ospite), indica il **«Giorno della prova»** e premi **«Registra la prova»**.
+4. Per togliere una prova registrata per errore premi **«Togli»**.
+
+La prova è sempre gratuita. Si registra solo per sapere chi è venuto e da quando.
+
+In **Bacheca** il riquadro **«Prove fatte, non ancora iscritti»** elenca chi ha fatto una prova negli ultimi 45 giorni e non si è iscritto, con i contatti per richiamarlo.
+
+## Cosa paga chi si iscrive dopo la prova
+
+- Chi si **iscrive nello stesso mese** paga dal giorno della prova, in proporzione alle lezioni, se il corso paga in proporzione (vedi sotto).
+- Chi si iscrive **più tardi** non paga la prova.
+- Nei corsi con **rinnovo trimestrale** o **pagamento unico** si paga sempre per intero.
+
+## Il primo mese in proporzione
+
+Nei corsi con **rinnovo mensile** puoi scegliere cosa paga chi si iscrive a mese iniziato. Nei dati del corso, alla voce **«Chi si iscrive a mese iniziato»**:
+
+- **«Paga in proporzione alle lezioni che restano»**: è la scelta di partenza dei corsi nuovi. Il primo mese si paga dalla prima lezione vera dell'iscritto, in proporzione alle lezioni che restano. Un corso senza orari delle lezioni calcola la proporzione sui giorni.
+- **«Paga il mese intero»**: chi si iscrive a mese iniziato paga tutto il mese.
+
+Alcune regole:
+
+- chi si iscrive **prima della prima lezione del mese** paga il mese intero;
+- se nel mese **non restano lezioni**, per quel mese non si paga nulla;
+- la scelta vale per chi si iscrive **da adesso**: le iscrizioni già fatte non cambiano mai, anche se poi cambi la scelta del corso.
+
+## Se hai già dei corsi mensili
+
+Dopo l'aggiornamento, nei corsi mensili che esistevano già, chi si iscrive a mese iniziato **paga in proporzione** alle lezioni che restano. Le iscrizioni già fatte non cambiano.
+
+Per tornare al mese intero: apri il corso, vai su **«Chi si iscrive a mese iniziato»** e scegli **«Paga il mese intero»**.
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'corsi-a-lezioni-effettive',
+        'title' => 'Corsi a lezioni effettive',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Con **«A lezioni effettive»** il mese costa le lezioni che ci sono davvero nel calendario: un mese con cinque lezioni costa più di un mese con quattro.
+
+## Come si imposta
+
+1. Apri il corso da **Corsi ed eventi**.
+2. Nei dati del corso, alla voce **«Come si paga»**, scegli **«A lezioni effettive»**.
+3. Nel contributo scrivi il **prezzo di una lezione**. Vale anche per gli ospiti e per le varianti del contributo: anche quelli sono prezzi per lezione.
+4. Salva. Il corso deve avere gli **orari delle lezioni**: senza orari non si può calcolare il numero di lezioni.
+
+Il mese si paga **in anticipo**, sulle lezioni previste dal calendario.
+
+## Le lezioni del mese
+
+Nella scheda del corso il riquadro **«Lezioni del mese»** mostra, per il mese in corso e per il prossimo, quante lezioni ci sono e quanto costa il mese. Accanto leggi:
+
+- **«previsto, può cambiare»**: il numero segue ancora il calendario;
+- **«fissato»**: il numero è bloccato e uguale per tutti gli iscritti.
+
+Le lezioni del mese si **fissano** al primo incasso del mese, quando parte il promemoria o il giorno 1 del mese, a seconda di quale arriva prima. Da quel momento due iscritti non hanno mai un numero di lezioni diverso per lo stesso mese.
+
+## Ricalcola il mese
+
+Se dopo la fissazione cambi il calendario, per esempio aggiungi una lezione, la nuova lezione **non entra** nel mese già fissato. Se nessuno ha ancora pagato, premi **«Ricalcola»** accanto al mese: il plugin rifà le lezioni con il calendario di adesso e il dovuto degli iscritti cambia. Ti chiede conferma prima.
+
+## Cose da sapere
+
+- Una lezione **spostata dentro il mese** non cambia niente. Una lezione **spostata in un altro mese** resta nel mese di origine: si paga una volta sola.
+- Una lezione con le **presenze già segnate** conta sempre.
+- Il prezzo per lezione si fissa insieme al mese: se lo cambi, i mesi già fissati non si muovono.
+- Se il corso salta i giorni rossi, quelle lezioni non si contano nel mese: vedi [Giorni rossi: festività, patrono e chiusure](guida:giorni-rossi-festivita-patrono-e-chiusure).
+- Se una lezione viene annullata dopo che il mese è stato pagato, leggi [Lezione annullata già pagata](guida:lezione-annullata-gia-pagata).
+
+## Cambiare il modo di pagamento
+
+Un corso che ha già degli incassi non cambia modo di pagamento. Il plugin lo dice così: «Ci sono già incassi su questo corso: per cambiare modo di pagamento chiudi questo corso e creane uno nuovo (Duplica).».
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'giorni-rossi-festivita-patrono-e-chiusure',
+        'title' => 'Giorni rossi: festività, patrono e chiusure',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+I **giorni rossi** sono i giorni in cui l'associazione non fa lezione: le festività nazionali, la festa del patrono e le chiusure. Ogni corso sceglie se saltarli.
+
+## Cosa si imposta una volta sola
+
+In **Impostazioni**, nel gruppo **Soci e quote**, trovi la riga **«Giorni senza lezioni»**:
+
+- **«Festa del patrono»**: il giorno e il mese, per esempio 29/06. Di partenza è vuoto.
+- **«Chiusure dell'associazione»**: un periodo per riga, con il motivo, per esempio «24/12/2026 - 06/01/2027 Vacanze di Natale».
+
+Le **festività nazionali** le conosce già il plugin, compreso il 4 ottobre dal 2026.
+
+Un cambiamento vale da oggi: le lezioni già passate non cambiano.
+
+## Cosa si sceglie per ogni corso
+
+Nei dati del corso trovi la spunta **«Nessuna lezione nei giorni festivi e di chiusura»**.
+
+- **Spunta accesa**: il corso non fa lezione nei giorni rossi e quelle date spariscono dal calendario, dalle presenze, dalle quote e dalla cassa.
+- **Spunta spenta**: il corso fa lezione anche nei giorni rossi, come prima. Nei corsi che esistevano già la spunta è spenta.
+
+La scelta vale da quel giorno in poi.
+
+## Cosa non cambia
+
+- Le **date uniche** restano.
+- Una lezione con le **presenze già segnate** non sparisce mai.
+- Nei corsi a lezioni effettive i giorni rossi tolgono la lezione dal conto del mese: vedi [Corsi a lezioni effettive](guida:corsi-a-lezioni-effettive).
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'lezione-annullata-gia-pagata',
+        'title' => 'Lezione annullata già pagata',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Vale per i corsi **a lezioni effettive**. Se l'associazione annulla una lezione di un mese che gli iscritti hanno già pagato, nasce un **importo a favore** per ciascuno.
+
+## Cosa succede
+
+- La lezione esce dal dovuto del mese.
+- Chi aveva **già pagato** ha l'importo a favore, pari a una lezione.
+- Chi **non aveva pagato** deve semplicemente una lezione in meno.
+- Se è il socio a mancare a una lezione che si tiene, non ha niente a favore.
+- La quota dell'istruttore sulla lezione annullata torna all'associazione. Se il fondo è già stato liquidato, la differenza resta scritta sulla lezione.
+
+L'importo a favore **non è un incasso**: non compare in prima nota e non ha ricevuta.
+
+## Cosa può fare la segreteria
+
+Nella scheda del corso il riquadro **«Lezioni annullate»** elenca le lezioni annullate e, per ciascuna persona, cosa succede:
+
+- **Si scala dal rinnovo**: l'importo a favore si toglie dal rinnovo successivo **dello stesso corso**. Mai da un altro corso.
+- **«Segna il recupero»**: se concordi con l'iscritto di recuperare la lezione in un'altra data, indica la data del recupero. La lezione resta dovuta e l'importo a favore non spetta. La data deve essere un giorno in cui il corso ha lezione. **«Togli il recupero»** annulla la scelta.
+- **«Restituisci»**: restituisce l'importo in denaro. Scegli il **conto** e la **data**, poi conferma: si scrive in prima nota.
+
+Accanto a ogni riga leggi lo stato: l'importo a favore con la data di scadenza, «recupero il …», «restituito» oppure «chiuso: contributo per le attività».
+
+## Fino a quando vale
+
+- **Per i soci**: l'importo a favore vale fino alla **fine del primo mese dell'anno fiscale successivo** a quello della lezione. Il socio riceve un avviso prima della scadenza.
+- **Per gli ospiti**: nessuna scadenza. L'importo si restituisce a mano.
+
+Quando il termine passa, in **Bacheca** compare il riquadro **«Importi a favore scaduti da chiudere»** con l'elenco, il numero di persone e il totale. Spunta la casella di conferma e premi **«Chiudi»**: gli importi restano all'associazione come **contributo per le attività**. Non si scrive niente in prima nota, perché i soldi sono già incassati.
+
+## Mese pagato in moneta
+
+Se il mese era stato pagato con la moneta interna, la moneta **torna subito** a chi l'ha spesa, senza aspettare il rinnovo. Vedi [Nome della moneta e mensilità pagata in moneta](guida:nome-della-moneta-e-mensilita-in-moneta).
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'nome-della-moneta-e-mensilita-in-moneta',
+        'title' => 'Nome della moneta e mensilità pagata in moneta',
+        'body' => <<<'MD'
+> Disponibile in: {piano_contabile} e {piano_fiscale}
+
+La moneta interna, che i soci comprano a pacchetti, ha un nome che sceglie l'associazione. Di partenza si chiama **AssoCredito** (al plurale **AssoCrediti**).
+
+## Scegliere il nome
+
+1. Dal menu di Associazione Semplice apri la voce **Crediti**.
+2. Nel riquadro **«Nome della moneta»** scrivi il **Singolare** e il **Plurale**, per esempio «Stella» e «Stelle».
+3. Premi **Salva**.
+
+Il nome compare in area soci, email, ricevute ed esportazioni. I saldi non cambiano. Alcune regole:
+
+- vuoto vuol dire AssoCredito e AssoCrediti; se compili solo uno dei due, vale per entrambi;
+- massimo 24 caratteri, con almeno una lettera;
+- non si usa il simbolo dell'euro;
+- se il nome somiglia a una valuta vera, per esempio «euro» o «dollaro», il plugin ti avvisa: meglio un nome che non si confonda con il denaro.
+
+## Pagare la mensilità di un corso in moneta
+
+Se un corso ha un **costo nella moneta**, la mensilità si può pagare **o in euro o in moneta**, sempre per intero. Non esiste il pagamento misto.
+
+- **Il socio** apre in area soci la sezione **Pagamenti**: sotto **«Oppure paga in AssoCrediti»** trova un pulsante **«Paga N AssoCrediti»** per ogni mese pagabile. Con il saldo insufficiente il pulsante non c'è e legge «Servono N AssoCrediti, saldo M».
+- **Il genitore** può pagare con la propria moneta la mensilità del figlio **minorenne** di cui risulta genitore o tutore in anagrafica.
+- **La segreteria**, con il permesso Incassi, dalla scheda del corso, con il pulsante «Paga [mese] con N AssoCrediti (saldo M)».
+
+Cosa tenere presente:
+
+- un mese **già pagato in parte in euro** si completa in euro, non in moneta;
+- se per quel mese c'è un **pagamento online appena aperto**, il pagamento in moneta aspetta: finisci il pagamento online oppure riprova dopo pochi minuti;
+- il mese pagato in moneta è chiuso e non compaiono promemoria;
+- la spesa **non è un incasso**: non scrive in prima nota e non ha ricevuta;
+- se il mese viene annullato, o una lezione viene annullata, la moneta **torna a chi l'ha spesa** (anche al genitore).
+
+> Se un pagamento online arriva comunque per un mese già pagato in moneta, la segreteria lo trova da controllare e chi ha pagato riceve un'email.
 MD,
     ],
     [
