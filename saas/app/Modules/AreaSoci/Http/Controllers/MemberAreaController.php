@@ -60,13 +60,15 @@ final readonly class MemberAreaController
         ]);
     }
 
-    public function profile(): Response
+    public function profile(Request $request, TwoFactorController $twoFactor): Response
     {
         $id = $this->current->active();
 
         return $this->page('AreaSoci/Profilo', [
             'card' => $this->profiles->card($id) ?? abort(404),
             'details' => $this->profiles->details($id) ?? abort(404),
+            // Verifica in due passaggi: della scheda di chi è entrato (non di un minore aperto da un tutore).
+            'twoFactor' => $twoFactor->profileData($request, AccessController::org($request)['name']),
         ]);
     }
 

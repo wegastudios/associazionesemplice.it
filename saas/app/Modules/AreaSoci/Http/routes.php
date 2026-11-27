@@ -10,6 +10,7 @@ use App\Modules\AreaSoci\Http\Controllers\MemberResourcesController;
 use App\Modules\AreaSoci\Http\Controllers\PaymentSettingsController;
 use App\Modules\AreaSoci\Http\Controllers\PublicDonationController;
 use App\Modules\AreaSoci\Http\Controllers\StaffLinkController;
+use App\Modules\AreaSoci\Http\Controllers\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
 $domain = config('saas.members_domain');
@@ -26,6 +27,12 @@ $memberArea = function (): void {
     Route::get('/entra/{token}', [AccessController::class, 'linkPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link');
     Route::post('/entra/{token}', [AccessController::class, 'link'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.login.link.enter');
     Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');
+    // Verifica in due passaggi: il codice dopo il primo passaggio e il ripristino via email (telefono e codici di riserva persi).
+    Route::get('/accesso/verifica', [TwoFactorController::class, 'codePage'])->name('member.tfa.code');
+    Route::post('/accesso/verifica', [TwoFactorController::class, 'code'])->middleware('throttle:20,10')->name('member.tfa.code.check');
+    Route::post('/accesso/verifica/ripristino', [TwoFactorController::class, 'requestReset'])->middleware('throttle:5,60')->name('member.tfa.reset.request');
+    Route::get('/verifica/ripristino/{token}', [TwoFactorController::class, 'resetPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.tfa.reset');
+    Route::post('/verifica/ripristino/{token}', [TwoFactorController::class, 'reset'])->where('token', '[A-Za-z0-9_-]{43}')->middleware('throttle:20,10')->name('member.tfa.reset.confirm');
 
     Route::middleware('member')->group(function (): void {
         Route::get('/', [MemberAreaController::class, 'card'])->name('member.home');
@@ -41,6 +48,11 @@ $memberArea = function (): void {
         Route::post('/scheda/{person}', [AccessController::class, 'switch'])->whereUuid('person')->name('member.switch');
         Route::post('/esci', [AccessController::class, 'logout'])->name('member.logout');
         Route::post('/esci-ovunque', [AccessController::class, 'logoutAll'])->name('member.logout.all');
+        Route::post('/profilo/verifica/accendi', [TwoFactorController::class, 'start'])->middleware('throttle:10,10')->name('member.tfa.start');
+        Route::post('/profilo/verifica/conferma', [TwoFactorController::class, 'confirm'])->middleware('throttle:20,10')->name('member.tfa.confirm');
+        Route::post('/profilo/verifica/annulla', [TwoFactorController::class, 'cancel'])->middleware('throttle:10,10')->name('member.tfa.cancel');
+        Route::post('/profilo/verifica/codici', [TwoFactorController::class, 'regenerate'])->middleware('throttle:20,10')->name('member.tfa.regenerate');
+        Route::post('/profilo/verifica/spegni', [TwoFactorController::class, 'disable'])->middleware('throttle:20,10')->name('member.tfa.disable');
         Route::get('/risorse', [MemberResourcesController::class, 'index'])->name('member.resources');
         Route::post('/risorse/{resource}/prenota', [MemberResourcesController::class, 'book'])->whereUuid('resource')->middleware('throttle:member-book')->name('member.resources.book');
         Route::post('/risorse/prenotazioni/{reservation}/annulla', [MemberResourcesController::class, 'cancel'])->whereUuid('reservation')->middleware('throttle:member-cancel')->name('member.resources.cancel');
@@ -75,6 +87,7 @@ Route::domain('{org}.'.(is_string($domain) ? $domain : 'associazionesemplice.it'
 Route::middleware(['web', 'auth', 'two-factor', 'operator', 'package:member_area', 'can:people.edit'])->prefix('gestionale')->group(function (): void {
     Route::post('/soci/{person}/area-soci/link', [StaffLinkController::class, 'create'])->whereUuid('person')->name('member.staff.link');
     Route::post('/soci/{person}/area-soci/esci', [StaffLinkController::class, 'logoutAll'])->whereUuid('person')->name('member.staff.logout');
+    Route::post('/soci/{person}/area-soci/verifica-spegni', [StaffLinkController::class, 'twoFactorOff'])->whereUuid('person')->middleware('throttle:10,1')->name('member.staff.tfa-off');
 });
 
 // Gestionale: pagamenti online (impostazioni per chi gestisce l'associazione, elenco per la contabilità).

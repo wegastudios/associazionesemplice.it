@@ -39,7 +39,7 @@ function demoExemptions(): array
         'gestionale/risorse/{resource}/preventivo',
         'gestionale/soci/{person}/uscita', 'gestionale/soci/{person}/tessera-manuale', 'gestionale/tessere/{membership}/togli',
         'gestionale/soci/{person}/consensi', 'gestionale/domande/{application}/respingi',
-        'gestionale/soci/{person}/area-soci/link', 'gestionale/soci/{person}/area-soci/esci',
+        'gestionale/soci/{person}/area-soci/link', 'gestionale/soci/{person}/area-soci/esci', 'gestionale/soci/{person}/area-soci/verifica-spegni',
         'gestionale/soci/impostazioni', 'gestionale/domande/impostazioni', 'gestionale/soci/livelli',
         'gestionale/soci/{person}/tutori', 'gestionale/soci/{person}/tutori/{guardian}/operativo',
     ];

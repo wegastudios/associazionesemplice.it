@@ -1,9 +1,14 @@
 <script setup>
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array, removable: Array, twoFactorRequired: Boolean });
+const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array, removable: Array, twoFactorRequired: Boolean, twoFactorMembersRequired: Boolean });
+const memberArea = computed(() => (usePage().props.org?.packages ?? []).includes('member_area'));
+const setMembersRequired = (on) => {
+    if (on && !window.confirm('Chiedere la verifica in due passaggi ai soci? Chi non l\'ha ancora accesa dovrà accenderla al prossimo ingresso nell\'area soci, prima di vedere il resto.')) return;
+    router.put('/gestionale/operatori/verifica-soci', { required: on }, { preserveScroll: true });
+};
 
 // Verifica in due passaggi obbligatoria per chi lavora qui: per chiederla bisogna averla attiva.
 const meHasTwoFactor = computed(() => props.operators.some((o) => o.me && o.two_factor));
@@ -77,6 +82,13 @@ const field = 'field';
                     <span class="block text-muted">Oltre alla password, a ogni accesso serve un codice dal telefono. Chi non l'ha ancora attiva la attiva al prossimo accesso, prima di vedere i dati. Spenta, ognuno sceglie per sé.</span>
                     <span v-if="!twoFactorRequired && !meHasTwoFactor" class="block text-muted">Per chiederla a tutti, prima <a href="/account/verifica-in-due-passaggi" class="font-semibold text-accent hover:underline">attivala per te</a>.</span>
                     <span v-else-if="twoFactorRequired && withoutTwoFactor" class="block text-muted">{{ withoutTwoFactor === 1 ? '1 persona non l\'ha ancora attiva.' : `${withoutTwoFactor} persone non l'hanno ancora attiva.` }}</span>
+                </span>
+            </label>
+            <label v-if="memberArea" class="mt-3 flex items-start gap-2 text-sm">
+                <input type="checkbox" class="mt-1" :checked="twoFactorMembersRequired" @change="setMembersRequired($event.target.checked)" />
+                <span>
+                    <span class="font-semibold">Richiedi la verifica in due passaggi ai soci</span>
+                    <span class="block text-muted">Nell'area soci, oltre al link o al codice via email, serve un codice dal telefono. Chi non l'ha ancora accesa la accende al prossimo ingresso. Spenta, ogni socio sceglie per sé.</span>
                 </span>
             </label>
         </section>
