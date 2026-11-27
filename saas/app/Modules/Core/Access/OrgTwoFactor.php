@@ -19,6 +19,9 @@ final readonly class OrgTwoFactor
     /** Impostazione dell'associazione (app.settings): true = obbligatoria per chi ci lavora. */
     public const KEY = 'core.two_factor_staff';
 
+    /** Impostazione dell'associazione: true = chiesta anche ai soci, nell'area soci (spenta di partenza). */
+    public const MEMBERS_KEY = 'core.two_factor_members';
+
     public function __construct(
         private Memberships $memberships,
         private OrgContext $context,
@@ -34,6 +37,16 @@ final readonly class OrgTwoFactor
     public function setRequiredHere(bool $required): void
     {
         $this->settings->set(self::KEY, $required);
+    }
+
+    public function membersRequiredHere(): bool
+    {
+        return $this->settings->get(self::MEMBERS_KEY, false) === true;
+    }
+
+    public function setMembersRequiredHere(bool $required): void
+    {
+        $this->settings->set(self::MEMBERS_KEY, $required);
     }
 
     /**

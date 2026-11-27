@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Http\Controllers;
 
+use App\Modules\AreaSoci\Mail\TwoFactorOffNotice;
 use App\Modules\AreaSoci\Services\MemberAccess;
 use App\Modules\AreaSoci\Services\MemberAccessError;
+use App\Modules\AreaSoci\Services\MemberTwoFactor;
+use App\Modules\Core\Contracts\MailQueue;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\QueuedMail;
+use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +43,22 @@ final readonly class StaffLinkController
     public function logoutAll(string $person): JsonResponse
     {
         return response()->json(['closed' => $this->access->closeAll($person)]);
+    }
+
+    /** La segreteria spegne la verifica in due passaggi del socio (telefono e codici di riserva persi): chiude gli accessi e lo avvisa. */
+    public function twoFactorOff(string $person, MemberTwoFactor $twoFactor, MemberProfiles $profiles, OrgContacts $contacts): JsonResponse
+    {
+        if (! $twoFactor->disable($person, 'staff')) {
+            return response()->json(['done' => false]);
+        }
+        $this->access->closeAll($person);
+        $email = $profiles->details($person)['email'] ?? null;
+        $name = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('name');
+        if (is_string($email) && $email !== '') {
+            MailQueue::sendNowOrQueue(QueuedMail::mailable($email, new TwoFactorOffNotice(is_string($name) ? $name : 'Area soci', 'staff', false, '', $contacts->all()['email'] ?? null), MailQueue::URGENT, now()->addDay()));
+        }
+
+        return response()->json(['done' => true]);
     }
 
     /** https://<slug>.<dominio dei soci>, o il dominio personalizzato se verificato, con lo schema dell'applicazione (http in locale). */

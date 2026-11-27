@@ -62,6 +62,7 @@ final readonly class OperatorsController
                 'value' => $a->value, 'label' => $a->label(), 'requires' => array_map(static fn (Ability $r): string => $r->value, $a->requires()),
             ], Ability::assignable()),
             'twoFactorRequired' => $this->twoFactor->requiredHere(),
+            'twoFactorMembersRequired' => $this->twoFactor->membersRequiredHere(),
         ]);
     }
 
@@ -98,6 +99,23 @@ final readonly class OperatorsController
         return back()->with('status', $without === []
             ? 'Verifica in due passaggi obbligatoria: tutti l\'hanno già attiva.'
             : 'Verifica in due passaggi obbligatoria. '.(count($without) === 1 ? '1 persona non l\'ha ancora attiva: ha ricevuto un\'email e la attiverà al prossimo accesso.' : count($without).' persone non l\'hanno ancora attiva: hanno ricevuto un\'email e la attiveranno al prossimo accesso.'));
+    }
+
+    /** Verifica in due passaggi chiesta ai soci nell'area soci: chi non l'ha la accende al primo ingresso, prima del resto. */
+    public function twoFactorMembers(Request $request): RedirectResponse
+    {
+        $required = Input::of($request->validate(['required' => ['required', 'boolean']]))['required'];
+        $required = $required === true || $required === 1 || $required === '1' || $required === 'true';
+        $this->by();
+        if ($required === $this->twoFactor->membersRequiredHere()) {
+            return back();
+        }
+        $this->twoFactor->setMembersRequiredHere($required);
+        $this->audit->record($required ? 'org.two_factor.members_required' : 'org.two_factor.members_optional');
+
+        return back()->with('status', $required
+            ? 'Verifica in due passaggi chiesta ai soci: chi non l\'ha la accenderà al prossimo ingresso nell\'area soci.'
+            : 'Verifica in due passaggi non più chiesta ai soci: ognuno sceglie per sé.');
     }
 
     public function invite(Request $request): RedirectResponse

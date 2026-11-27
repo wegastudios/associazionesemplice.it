@@ -7,6 +7,7 @@ namespace App\Modules\AreaSoci\Http\Controllers;
 use App\Modules\AreaSoci\Http\Middleware\AuthenticateMember;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberAccess;
+use App\Modules\AreaSoci\Services\MemberTwoFactor;
 use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\HostCookies;
 use App\Modules\Core\Contracts\Input;
@@ -28,6 +29,7 @@ final readonly class AccessController
         private MemberAccess $access,
         private CurrentMember $current,
         private RateLimiter $limiter,
+        private MemberTwoFactor $twoFactor,
     ) {}
 
     public function show(Request $request): Response
@@ -117,6 +119,21 @@ final readonly class AccessController
 
     private function enter(Request $request, string $personId, ?string $email): RedirectResponse
     {
+        // Verifica in due passaggi accesa sulla scheda: prima del cookie d'accesso serve il codice dell'app (10 minuti).
+        if ($this->twoFactor->isOn($personId)) {
+            $request->session()->regenerate();
+            $request->session()->put(TwoFactorController::PENDING, ['person' => $personId, 'email' => $email, 'at' => time()]);
+
+            return redirect('/area/accesso/verifica');
+        }
+
+        return $this->open($request, $personId, $email);
+    }
+
+    /** Apre l'accesso (cookie della sessione del socio). Dopo il primo passaggio, e dopo il codice se la verifica è accesa. */
+    public function open(Request $request, string $personId, ?string $email): RedirectResponse
+    {
+        $request->session()->forget(TwoFactorController::PENDING);
         $token = $this->access->open($personId, $email, $request->userAgent());
         $request->session()->regenerate();
         $request->session()->forget(AuthenticateMember::ACTIVE);

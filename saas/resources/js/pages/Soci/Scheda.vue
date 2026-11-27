@@ -57,9 +57,11 @@ const memberPost = async (what) => {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) accessError.value = json.error ?? 'Operazione non riuscita: riprova.';
     else if (what === 'link') accessLink.value = json.link;
+    else if (what === 'verifica-spegni') accessDone.value = json.done ? 'Verifica in due passaggi spenta e accessi chiusi: la persona ha ricevuto un\'email di avviso.' : 'La verifica in due passaggi non era accesa.';
     else accessDone.value = `Accessi chiusi: ${json.closed}.`;
 };
 const copyLink = () => navigator.clipboard?.writeText(accessLink.value);
+const confirmTwoFactorOff = () => window.confirm('Spegnere la verifica in due passaggi dell\'area soci di questa persona? Fallo solo se ha perso il telefono e i codici di riserva e sei sicuro che sia lei a chiederlo.') && memberPost('verifica-spegni');
 // Senza il permesso sui dati riservati la scheda non li riceve: non si rimandano al salvataggio, così restano come sono.
 const hidden = props.person?.sensitive === false;
 const save = () => (props.person ? form.transform((d) => { if (!hidden) return d; const { tax_code, iban, notes, ...rest } = d; return rest; }).put(`/gestionale/soci/${props.person.id}`, { preserveScroll: true }) : form.post('/gestionale/soci'));
@@ -285,7 +287,9 @@ const label = 'space-y-1 text-sm';
                 <div class="flex flex-wrap gap-3 text-sm">
                     <button type="button" class="btn btn-secondary" @click="memberPost('link')">Prepara il link d'accesso</button>
                     <button type="button" class="btn btn-danger" @click="memberPost('esci')">Chiudi i suoi accessi</button>
+                    <button type="button" class="btn btn-secondary" @click="confirmTwoFactorOff">Spegni la sua verifica in due passaggi</button>
                 </div>
+                <p class="mt-2 text-xs text-muted">Solo se ha perso il telefono e i codici di riserva, e dopo esserti accertato che sia davvero la persona: la verifica si spegne, i suoi accessi si chiudono e riceve un'email di avviso.</p>
                 <div v-if="accessLink" class="mt-3 flex flex-wrap items-center gap-2">
                     <input :value="accessLink" readonly class="min-w-64 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm" aria-label="Link d'accesso" @focus="$event.target.select()" />
                     <button type="button" class="btn btn-primary btn-sm" @click="copyLink">Copia</button>
