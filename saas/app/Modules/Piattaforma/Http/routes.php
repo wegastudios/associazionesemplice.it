@@ -30,6 +30,8 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
     Route::post('verifica', [AdminLoginController::class, 'verify'])->middleware('throttle:platform-code');
     Route::get('attivazione', [AdminLoginController::class, 'showEnroll'])->name('platform.enroll');
     Route::post('attivazione', [AdminLoginController::class, 'enroll'])->middleware('throttle:platform-code');
+    // La verifica in due passaggi dello staff è facoltativa (decisione del titolare del 26/11/2026).
+    Route::post('attivazione/salta', [AdminLoginController::class, 'skipEnroll'])->middleware('throttle:platform-code')->name('platform.enroll.skip');
 
     Route::middleware('platform.staff')->group(function (): void {
         Route::get('/', [AdminConsoleController::class, 'home'])->name('platform.home');

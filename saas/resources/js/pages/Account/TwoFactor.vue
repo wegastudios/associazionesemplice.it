@@ -10,6 +10,7 @@ const props = defineProps({
     enabled: Boolean,
     confirmed: Boolean,
     required: Boolean,
+    requiredBy: { type: Array, default: () => [] },
     qrSvg: { type: String, default: null },
     setupKey: { type: String, default: null },
     recoveryCodes: { type: Array, default: null },
@@ -33,9 +34,18 @@ const disable = () => window.confirm('Disattivare la verifica in due passaggi? P
 <template>
     <Head title="Verifica in due passaggi" />
     <GuestLayout title="Verifica in due passaggi">
-        <p v-if="props.required && !props.confirmed" class="mb-5 rounded-lg border border-giallo bg-giallo/15 px-3 py-2 text-sm font-semibold">
+        <p v-if="props.requiredBy.length && !props.confirmed" class="mb-5 rounded-lg border border-giallo bg-giallo/15 px-3 py-2 text-sm font-semibold" role="alert">
+            {{ props.requiredBy.length === 1 ? `L'associazione «${props.requiredBy[0]}» chiede` : `Le associazioni ${props.requiredBy.map((n) => `«${n}»`).join(', ')} chiedono` }}
+            la verifica in due passaggi a chi ci lavora: attivala per continuare. Bastano pochi minuti e protegge i dati dei
+            soci anche se qualcuno scopre la tua password.
+        </p>
+        <p v-else-if="props.required && !props.confirmed" class="mb-5 rounded-lg border border-giallo bg-giallo/15 px-3 py-2 text-sm font-semibold">
             Per lavorare nel gestionale la verifica in due passaggi è obbligatoria: protegge i dati dei soci anche se
             qualcuno scopre la tua password.
+        </p>
+        <p v-else-if="!props.confirmed" class="mb-5 text-sm text-muted">
+            La verifica in due passaggi è facoltativa, ma consigliata: protegge i dati dei soci anche se qualcuno scopre la
+            tua password.
         </p>
 
         <div v-if="!props.enabled" class="space-y-5">
@@ -81,6 +91,10 @@ const disable = () => window.confirm('Disattivare la verifica in due passaggi? P
             <div v-if="!props.required">
                 <button type="button" class="text-sm font-semibold text-danger hover:underline" @click="disable">Disattiva la verifica</button>
             </div>
+            <p v-else-if="props.requiredBy.length" class="text-sm text-muted">
+                Non puoi disattivarla: {{ props.requiredBy.length === 1 ? `l'associazione «${props.requiredBy[0]}» la chiede` : `le associazioni ${props.requiredBy.map((n) => `«${n}»`).join(', ')} la chiedono` }}
+                a chi ci lavora.
+            </p>
             <p v-if="disableError" class="text-sm font-semibold text-danger" role="alert">{{ disableError }}</p>
         </div>
         <Link href="/gestionale" class="mt-6 block text-center font-semibold text-accent hover:underline">Torna al gestionale</Link>
