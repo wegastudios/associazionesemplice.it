@@ -86,7 +86,11 @@ final readonly class MemberTwoFactor
         return ['secret' => $secret, 'qr_svg' => $this->qr($issuer, $account, $secret)];
     }
 
-    /** Il segreto in attesa di conferma, per ridisegnare il codice QR; null se non c'è. @return array{secret: string, qr_svg: string}|null */
+    /**
+     * Il segreto in attesa di conferma, per ridisegnare il codice QR; null se non c'è.
+     *
+     * @return array{secret: string, qr_svg: string}|null
+     */
     public function pendingSetup(string $personId, string $issuer, string $account): ?array
     {
         $row = $this->table()->where('person_id', $personId)->whereNull('confirmed_at')->first(['secret']);
@@ -159,7 +163,11 @@ final readonly class MemberTwoFactor
         $this->fail($personId);
     }
 
-    /** Nuovi codici di riserva al posto di quelli di prima. @return list<string> */
+    /**
+     * Nuovi codici di riserva al posto di quelli di prima.
+     *
+     * @return list<string>
+     */
     public function regenerate(string $personId): array
     {
         $codes = self::newBackups();
