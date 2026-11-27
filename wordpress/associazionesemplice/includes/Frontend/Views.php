@@ -878,7 +878,7 @@ final class Views {
 				. '<ul class="asemf-tfa-codes">' . $list . '</ul></div>';
 		}
 		if ( TwoFactor::is_on( $sub ) && TwoFactor::needs_reset( $sub ) ) { // segreto illeggibile: si spegne con un codice di riserva e si riaccende
-			$html .= '<p class="asemf-notice asemf-err">' . esc_html( TwoFactor::RESET_MSG ) . '</p>'
+			$html .= '<p class="asemf-notice asemf-err">' . esc_html( TwoFactor::RESET_MSG_NO_EMAIL ) . '</p>'
 				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice di riserva' ), 'Spegni per riaccenderla' );
 			return $html . '</section>';
 		}

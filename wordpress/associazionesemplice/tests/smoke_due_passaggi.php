@@ -173,6 +173,14 @@ Counters::delete( 'asem_ml_m_' . md5( $dp_addr ) );
 MemberLogin::request( $dp_addr );
 $dp_tok = 1 === preg_match( '/asem_ml=([A-Za-z0-9_-]{43})/', (string) end( $dp_mail )['message'], $dp_mm ) ? $dp_mm[1] : '';
 asem_ok( '' !== $dp_tok && $dp_p === MemberLogin::login_with_token( $dp_tok ) && 0 === $dp_sess() && null !== TwoFactor::pending(), 'due passaggi: anche il link via email si ferma prima della sessione' );
+// Entrato con il link via email: il ripristino via email ripeterebbe lo stesso passaggio, quindi non si offre e non si accetta.
+$dp_lpage = MemberLoginPage::page( '', '', '', '', '' );
+$dp_ln    = count( $dp_mail );
+asem_ok( 'link' === TwoFactor::pending()['h'] && ! TwoFactor::recovery_allowed( TwoFactor::pending() ) && false === strpos( $dp_lpage, 'value="tfa_recover"' ) && false !== strpos( $dp_lpage, 'Chiedi alla segreteria di spegnere la verifica' ), 'due passaggi: entrato con il link via email, il link di ripristino non si offre e la pagina rimanda alla segreteria' );
+asem_ok( ! TwoFactor::request_recovery() && count( $dp_mail ) === $dp_ln && 1 === count( $dp_audit( 'member.tfa_recovery_refused', $dp_p ) ), 'due passaggi: anche forzando la richiesta, dopo il link via email nessuna email di ripristino' );
+$dp_forged = \AssociazioneSemplice\SessionToken::generate();
+Counters::set( 'asem_tfa_r_' . substr( hash( 'sha256', $dp_forged ), 0, 40 ), array( 'p' => $dp_p ), 600 ); // un link senza il segno «dopo la password»
+asem_ok( ! TwoFactor::recovery_valid( $dp_forged ) && ! TwoFactor::use_recovery( $dp_forged ) && TwoFactor::is_on( $dp_p ), 'due passaggi: un link di ripristino non chiesto dopo la password non vale' );
 asem_ok( 'ok' === TwoFactor::finish_login( $dp_codes[0] ) && 1 === $dp_sess() && 9 === TwoFactor::backup_left( $dp_p ) && 1 === count( $dp_audit( 'member.tfa_backup_used', $dp_p ) ), 'due passaggi: un codice di riserva fa entrare e si consuma' );
 $dp_out();
 MemberLogin::login_with_password( $dp_addr, $dp_pw );

@@ -454,6 +454,22 @@ final class TwoFactor {
 	/** Messaggio per il segreto illeggibile. */
 	const RESET_MSG = 'La verifica in due passaggi va riconfigurata: il codice dell\'app non si può più controllare. Usa un codice di riserva oppure il link via email, poi riaccendila da «Il mio profilo».';
 
+	/** Come sopra, quando il link via email non si può offrire (primo passaggio con link o codice via email). */
+	const RESET_MSG_NO_EMAIL = 'La verifica in due passaggi va riconfigurata: il codice dell\'app non si può più controllare. Usa un codice di riserva, oppure chiedi alla segreteria di spegnerla; poi riaccendila da «Il mio profilo».';
+
+	/** Frase per chi non ha telefono né codici di riserva e non può usare il link via email. */
+	const ASK_SECRETARY = 'Hai perso il telefono e i codici di riserva? Chiedi alla segreteria di spegnere la verifica.';
+
+	/**
+	 * Il link via email che spegne la verifica si offre e si accetta solo se il primo passaggio è stato la password: con il link o il codice via
+	 * email chi controlla la casella supererebbe da solo tutti e due i passaggi. Restano i codici di riserva e lo spegnimento dalla scheda.
+	 *
+	 * @param array{p:int,r:int,h:string}|null $pend il passaggio a metà
+	 */
+	public static function recovery_allowed( ?array $pend ): bool {
+		return $pend && 'password' === (string) $pend['h'];
+	}
+
 	/** Messaggio unico per un codice che non va. */
 	const WRONG_MSG = 'Il codice non è corretto o è già stato usato. Scrivi il codice che vedi adesso nell\'app, oppure un codice di riserva.';
 
@@ -651,6 +667,10 @@ final class TwoFactor {
 		if ( ! $pend ) {
 			return false;
 		}
+		if ( ! self::recovery_allowed( $pend ) ) { // primo passaggio con link o codice via email: l'email non può fare anche da secondo
+			Audit::log( 'member.tfa_recovery_refused', 'person', $pend['p'], array( 'how' => $pend['h'] ) );
+			return false;
+		}
 		$p = Plugin::people()->get( $pend['p'] );
 		if ( ! $p || '' === (string) $p['email'] ) {
 			return false;
@@ -662,7 +682,7 @@ final class TwoFactor {
 		}
 		Counters::set( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		$raw = SessionToken::generate();
-		Counters::set( self::recovery_key( $raw ), array( 'p' => (int) $p['id'] ), self::RECOVERY_TTL );
+		Counters::set( self::recovery_key( $raw ), array( 'p' => (int) $p['id'], 'pw' => 1 ), self::RECOVERY_TTL ); // nato dopo la password: solo così vale
 		Audit::log( 'member.tfa_recovery_sent', 'person', (int) $p['id'] );
 		$assoc = (string) Settings::get( 'association_name' );
 		$link  = add_query_arg( 'asem_tfa_off', $raw, Frontend\MemberLoginPage::url() ); // la pagina di accesso dei soci, con il link
@@ -677,14 +697,14 @@ final class TwoFactor {
 			return false;
 		}
 		$v = Counters::get( self::recovery_key( $raw ) );
-		return is_array( $v ) && ! empty( $v['p'] );
+		return is_array( $v ) && ! empty( $v['p'] ) && ! empty( $v['pw'] );
 	}
 
 	/** Consuma il link una volta sola. @return int la persona, 0 se il link non vale */
 	private static function claim_recovery( string $raw ): int {
 		$key = self::recovery_key( $raw );
 		$v   = Counters::get( $key );
-		if ( ! is_array( $v ) || empty( $v['p'] ) ) {
+		if ( ! is_array( $v ) || empty( $v['p'] ) || empty( $v['pw'] ) ) { // solo i link chiesti dopo la password
 			return 0;
 		}
 		if ( Counters::uses_table() ) { // la riga si toglie con una sola istruzione: due clic insieme non lo usano due volte
