@@ -145,14 +145,18 @@ it('se l\'associazione la chiede ai soci, chi non l\'ha vede solo il profilo per
     expect(tfaIsOn($this))->toBeTrue();
 });
 
-it('senza obbligo il socio la spegne con un codice dell\'app', function (): void {
-    [$secret] = tfaOn($this);
+it('senza obbligo il socio la spegne con un codice (qui di riserva: l\'orologio delle prove non cambia il codice dell\'app)', function (): void {
+    [$secret, $codes] = tfaOn($this);
     tfaFirstStep($this);
     $cookie = (string) $this->post($this->base.'/accesso/verifica', ['code' => (new Google2FA)->getCurrentOtp($secret)])->getCookie('as_socio', false)?->getValue();
-    $this->travel(31)->seconds();
 
+    // Lo stesso codice dell'app appena usato per entrare non spegne nulla.
     $this->withUnencryptedCookie('as_socio', $cookie)->post($this->base.'/profilo/verifica/spegni', ['code' => (new Google2FA)->getCurrentOtp($secret)])
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasErrors('tfa');
+    expect(tfaIsOn($this))->toBeTrue();
+
+    $this->withUnencryptedCookie('as_socio', $cookie)->post($this->base.'/profilo/verifica/spegni', ['code' => $codes[0]])
+        ->assertRedirect('/area/profilo#verifica')->assertSessionHasNoErrors();
     expect(tfaIsOn($this))->toBeFalse();
 });
 
