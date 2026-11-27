@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Controllers;
 
+use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Access\OrgMembers;
+use App\Modules\Core\Access\OrgTwoFactor;
+use App\Modules\Core\Auth\OrgTwoFactorRequiredNotification;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\Input;
@@ -12,6 +15,7 @@ use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OperatorLimitReached;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\Org;
+use App\Modules\Core\Models\User;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +32,8 @@ final readonly class OperatorsController
     public function __construct(
         private OrgMembers $members,
         private CurrentOperator $current,
+        private OrgTwoFactor $twoFactor,
+        private AuditLog $audit,
     ) {}
 
     public function index(): Response
@@ -55,7 +61,43 @@ final readonly class OperatorsController
             'abilities' => array_map(static fn (Ability $a): array => [
                 'value' => $a->value, 'label' => $a->label(), 'requires' => array_map(static fn (Ability $r): string => $r->value, $a->requires()),
             ], Ability::assignable()),
+            'twoFactorRequired' => $this->twoFactor->requiredHere(),
         ]);
+    }
+
+    /**
+     * Verifica in due passaggi obbligatoria per chi lavora nell'associazione. Per accenderla bisogna averla attiva: chi la
+     * chiede non si chiude fuori da solo. Accesa, chi non l'ha ancora riceve un'email e la attiva al primo accesso.
+     */
+    public function twoFactor(Request $request): RedirectResponse
+    {
+        $required = Input::of($request->validate(['required' => ['required', 'boolean']]))['required'];
+        $required = $required === true || $required === 1 || $required === '1' || $required === 'true';
+        $by = $this->by();
+        $user = $request->user();
+
+        if ($required && (! $user instanceof User || ! $user->hasConfirmedTwoFactor())) {
+            throw ValidationException::withMessages(['ledger' => 'Prima attiva la verifica in due passaggi per te, dal tuo profilo: poi potrai chiederla a tutti.']);
+        }
+        if ($required === $this->twoFactor->requiredHere()) {
+            return back();
+        }
+
+        $this->twoFactor->setRequiredHere($required);
+        $this->audit->record($required ? 'org.two_factor.required' : 'org.two_factor.optional');
+
+        if (! $required) {
+            return back()->with('status', 'Verifica in due passaggi non più obbligatoria: ognuno sceglie per sé.');
+        }
+
+        $without = array_filter($this->members->operators($this->org($by)), static fn (array $o): bool => ! $o['two_factor']);
+        foreach (User::query()->whereIn('id', array_map(static fn (array $o): string => $o['user_id'], $without))->get() as $operator) {
+            $operator->notify(new OrgTwoFactorRequiredNotification($operator->name, $by->orgName));
+        }
+
+        return back()->with('status', $without === []
+            ? 'Verifica in due passaggi obbligatoria: tutti l\'hanno già attiva.'
+            : 'Verifica in due passaggi obbligatoria. '.(count($without) === 1 ? '1 persona non l\'ha ancora attiva: ha ricevuto un\'email e la attiverà al prossimo accesso.' : count($without).' persone non l\'hanno ancora attiva: hanno ricevuto un\'email e la attiveranno al prossimo accesso.'));
     }
 
     public function invite(Request $request): RedirectResponse

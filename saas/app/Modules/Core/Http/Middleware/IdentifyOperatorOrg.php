@@ -6,6 +6,7 @@ namespace App\Modules\Core\Http\Middleware;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Access\Memberships;
+use App\Modules\Core\Access\OrgTwoFactor;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Models\User;
@@ -29,6 +30,7 @@ final readonly class IdentifyOperatorOrg
         private CurrentOperator $operator,
         private AuditLog $audit,
         private LifecyclePolicy $lifecycle,
+        private OrgTwoFactor $twoFactor,
     ) {}
 
     /** @param  Closure(Request): Response  $next */
@@ -66,6 +68,17 @@ final readonly class IdentifyOperatorOrg
         }
 
         $this->context->enter($operator->orgId);
+
+        // L'associazione chiede la verifica in due passaggi a chi ci lavora: chi non l'ha ancora attiva la attiva subito,
+        // al primo accesso, prima di vedere qualunque dato. Le sue altre associazioni, se non la chiedono, restano aperte.
+        if (! $user->hasConfirmedTwoFactor() && $this->twoFactor->requiredHere()) {
+            $request->session()->forget(self::SESSION_KEY);
+
+            return $request->expectsJson()
+                ? abort(403, 'La tua associazione chiede la verifica in due passaggi: attivala per continuare.')
+                : redirect()->route('account.two-factor');
+        }
+
         $this->operator->set($operator);
 
         // Prova finita senza un piano: si consulta, non si modifica (il profilo personale resta modificabile).

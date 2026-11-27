@@ -75,6 +75,7 @@ Route::middleware('web')->group(function (): void {
                 // Chi cambia chi può fare cosa riconferma la password: un accesso lasciato aperto non basta.
                 Route::middleware('password.confirm')->group(function (): void {
                     Route::post('/operatori', [OperatorsController::class, 'invite'])->middleware('throttle:20,1')->name('operators.invite');
+                    Route::put('/operatori/verifica-obbligatoria', [OperatorsController::class, 'twoFactor'])->middleware('throttle:10,1')->name('operators.two-factor');
                     Route::put('/operatori/{user}', [OperatorsController::class, 'update'])->whereUuid('user')->name('operators.update');
                     Route::put('/operatori/{user}/permessi', [OperatorsController::class, 'permissions'])->whereUuid('user')->name('operators.permissions');
                     Route::delete('/operatori/{user}', [OperatorsController::class, 'remove'])->whereUuid('user')->name('operators.remove');

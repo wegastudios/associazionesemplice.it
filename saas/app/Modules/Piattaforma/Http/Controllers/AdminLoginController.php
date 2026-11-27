@@ -131,6 +131,23 @@ final readonly class AdminLoginController
         return redirect(self::url('accesso'));
     }
 
+    /**
+     * Entrata senza verifica in due passaggi, solo per chi non l'ha attiva: per lo staff è facoltativa (decisione del
+     * titolare del 26/11/2026), come per tutti gli altri. Chi l'ha attiva passa sempre dal codice.
+     */
+    public function skipEnroll(Request $request): RedirectResponse
+    {
+        $staff = $this->pending($request);
+        if ($staff === null || $staff->two_factor_confirmed_at !== null) {
+            return redirect(self::url('accesso'));
+        }
+        // Il segreto proposto e mai confermato non resta: la prossima attivazione ne genera uno nuovo.
+        $staff->forceFill(['two_factor_secret' => null])->save();
+        $this->audit->record('staff.two_factor_skipped', $staff->id, null, [], $request);
+
+        return $this->finish($request, $staff);
+    }
+
     private function checkCode(Request $request, PlatformStaff $staff, bool $confirm = false): RedirectResponse
     {
         $request->validate(['code' => ['required', 'string', 'regex:/^\d{6}$/']]);
@@ -147,6 +164,12 @@ final readonly class AdminLoginController
             $staff->forceFill(['two_factor_confirmed_at' => now()])->save();
             $this->audit->record('staff.two_factor_enabled', $staff->id, null, [], $request);
         }
+
+        return $this->finish($request, $staff);
+    }
+
+    private function finish(Request $request, PlatformStaff $staff): RedirectResponse
+    {
         $staff->forceFill(['last_login_at' => now()])->save();
 
         $request->session()->forget(['platform.pending', 'platform.pending_at']);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Modules\Core\Access\Memberships;
+use App\Modules\Core\Access\OrgTwoFactor;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,10 +14,13 @@ use Laravel\Fortify\Fortify;
 /**
  * Pagina della verifica in due passaggi: attivazione (codice QR e chiave), conferma, codici di recupero.
  * Protetta dalla conferma della password. Le azioni sono gli endpoint di Fortify.
+ *
+ * È una scelta personale; è obbligatoria (e non si spegne) se c'è l'obbligo per tutti o se una delle associazioni in cui
+ * la persona lavora la chiede (`requiredBy`: i loro nomi).
  */
 final readonly class TwoFactorSetupController
 {
-    public function __construct(private Memberships $memberships) {}
+    public function __construct(private OrgTwoFactor $twoFactor) {}
 
     public function show(Request $request): Response
     {
@@ -32,7 +35,8 @@ final readonly class TwoFactorSetupController
         return Inertia::render('Account/TwoFactor', [
             'enabled' => $user->two_factor_secret !== null,
             'confirmed' => $user->hasConfirmedTwoFactor(),
-            'required' => $this->memberships->isOperator($user->id),
+            'required' => $this->twoFactor->mustKeep($user->id),
+            'requiredBy' => $this->twoFactor->requiringOrgs($user->id),
             'qrSvg' => $pending ? $user->twoFactorQrCodeSvg() : null,
             'setupKey' => $pending ? Fortify::currentEncrypter()->decrypt((string) $user->two_factor_secret) : null,
             'recoveryCodes' => $showCodes ? $user->recoveryCodes() : null,

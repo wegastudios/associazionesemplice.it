@@ -3,7 +3,17 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array, removable: Array });
+const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array, removable: Array, twoFactorRequired: Boolean });
+
+// Verifica in due passaggi obbligatoria per chi lavora qui: per chiederla bisogna averla attiva.
+const meHasTwoFactor = computed(() => props.operators.some((o) => o.me && o.two_factor));
+const withoutTwoFactor = computed(() => props.operators.filter((o) => !o.two_factor).length);
+const setTwoFactorRequired = (on) => {
+    if (on && !window.confirm(withoutTwoFactor.value === 0
+        ? 'Rendere obbligatoria la verifica in due passaggi per chi lavora nell\'associazione?'
+        : `Rendere obbligatoria la verifica in due passaggi? ${withoutTwoFactor.value === 1 ? '1 persona non l\'ha ancora attiva: riceverà un\'email e dovrà attivarla' : `${withoutTwoFactor.value} persone non l'hanno ancora attiva: riceveranno un'email e dovranno attivarla`} al prossimo accesso, prima di vedere i dati.`)) return;
+    router.put('/gestionale/operatori/verifica-obbligatoria', { required: on }, { preserveScroll: true });
+};
 
 // Dipendente: un interruttore per ogni permesso toglibile; ogni cambio si salva subito.
 const setDenied = (o, value, allowed) => {
@@ -57,6 +67,19 @@ const field = 'field';
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Operatori e ruoli</h1>
         <p class="mb-6 text-sm text-muted">Chi entra nel gestionale e cosa può fare.</p>
+
+        <section class="mb-6 card p-4 sm:p-5" aria-labelledby="security-title">
+            <h2 id="security-title" class="mb-2 text-lg font-bold">Sicurezza</h2>
+            <label class="flex items-start gap-2 text-sm">
+                <input type="checkbox" class="mt-1" :checked="twoFactorRequired" :disabled="!twoFactorRequired && !meHasTwoFactor" @change="setTwoFactorRequired($event.target.checked)" />
+                <span>
+                    <span class="font-semibold">Verifica in due passaggi obbligatoria per chi lavora nell'associazione</span>
+                    <span class="block text-muted">Oltre alla password, a ogni accesso serve un codice dal telefono. Chi non l'ha ancora attiva la attiva al prossimo accesso, prima di vedere i dati. Spenta, ognuno sceglie per sé.</span>
+                    <span v-if="!twoFactorRequired && !meHasTwoFactor" class="block text-muted">Per chiederla a tutti, prima <a href="/account/verifica-in-due-passaggi" class="font-semibold text-accent hover:underline">attivala per te</a>.</span>
+                    <span v-else-if="twoFactorRequired && withoutTwoFactor" class="block text-muted">{{ withoutTwoFactor === 1 ? '1 persona non l\'ha ancora attiva.' : `${withoutTwoFactor} persone non l'hanno ancora attiva.` }}</span>
+                </span>
+            </label>
+        </section>
 
         <section class="card p-4 sm:p-5" aria-labelledby="ops-title">
             <h2 id="ops-title" class="mb-3 text-lg font-bold">Operatori</h2>

@@ -117,3 +117,20 @@ it('senza SAAS_PUBLIC_URL gli indirizzi restano quelli dell\'app', function (): 
 
     $this->get('/saas/admin/accesso')->assertOk()->assertDontSee('associazionesemplice.it/saas/admin/accesso', false);
 });
+
+it('per lo staff la verifica è facoltativa: chi non l\'ha attiva può entrare senza, chi l\'ha attiva passa dal codice', function (): void {
+    $nuovo = makeStaff('senza@example.test', twoFactor: false);
+
+    $this->post('/saas/admin/accesso', ['email' => $nuovo->email, 'password' => STAFF_PASSWORD])->assertRedirect('/saas/admin/attivazione');
+    $this->get('/saas/admin/attivazione')->assertOk()->assertSee('Entra senza verifica');
+    $this->post('/saas/admin/attivazione/salta')->assertRedirect('/saas/admin');
+    $this->get('/saas/admin')->assertOk();
+    expect($nuovo->fresh()?->two_factor_confirmed_at)->toBeNull()
+        ->and($nuovo->fresh()?->two_factor_secret)->toBeNull();
+
+    $this->post('/saas/admin/esci');
+    $attivo = makeStaff('con@example.test');
+    $this->post('/saas/admin/accesso', ['email' => $attivo->email, 'password' => STAFF_PASSWORD])->assertRedirect('/saas/admin/verifica');
+    $this->post('/saas/admin/attivazione/salta')->assertRedirect('/saas/admin/accesso');
+    $this->get('/saas/admin')->assertRedirect('/saas/admin/accesso');
+});
