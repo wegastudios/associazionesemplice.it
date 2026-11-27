@@ -218,7 +218,7 @@ final class Views {
 		}
 		if ( \AssociazioneSemplice\TwoFactorWp::viewer_must_setup() ) { // l'associazione la richiede: prima di tutto il resto si accende la verifica in due passaggi
 			$box = self::section_two_factor( $person );
-			return self::wrap( '' !== $box ? $box : self::notice( \AssociazioneSemplice\TwoFactorWp::MUST_SETUP, 'asemf-err' ) );
+			return self::wrap( ( '' !== $box ? $box : self::notice( \AssociazioneSemplice\TwoFactorWp::MUST_SETUP, 'asemf-err' ) ) . MemberLoginPage::logout_button() ); // si può sempre uscire
 		}
 		return self::wrap( (string) $fn( $person ), $class );
 	}
