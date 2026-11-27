@@ -6,7 +6,6 @@ namespace App\Modules\Core\Http\Controllers;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Access\OrgMembers;
-use App\Modules\Core\Access\OrgTwoFactor;
 use App\Modules\Core\Auth\OrgTwoFactorRequiredNotification;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
@@ -14,6 +13,7 @@ use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OperatorLimitReached;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\OrgTwoFactor;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use Closure;

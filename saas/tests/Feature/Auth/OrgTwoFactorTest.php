@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Modules\Core\Access\OrgTwoFactor;
 use App\Modules\Core\Auth\OrgTwoFactorRequiredNotification;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\OrgTwoFactor;
 use App\Modules\Core\Models\Org;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;

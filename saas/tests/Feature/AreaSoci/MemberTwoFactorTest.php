@@ -8,9 +8,10 @@ use App\Modules\AreaSoci\Mail\TwoFactorResetLink;
 use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\AreaSoci\Services\MemberTwoFactor;
 use App\Modules\Contabilita\Models\Account;
-use App\Modules\Core\Access\OrgTwoFactor;
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Core\Contracts\OrgTwoFactor;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Models\Person;
@@ -46,7 +47,7 @@ beforeEach(function (): void {
 /** Accende la verifica della scheda dal servizio: restituisce il segreto e i codici di riserva. @return array{0: string, 1: list<string>} */
 function tfaOn(object $test): array
 {
-    return $test->orgContext()->run($test->org->id, function () use ($test): array {
+    return app(OrgContext::class)->run($test->org->id, function () use ($test): array {
         $tfa = app(MemberTwoFactor::class);
         $secret = $tfa->start($test->mario->id, 'Polisportiva Alfa', 'mario@example.com')['secret'];
         $codes = $tfa->confirm($test->mario->id, (new Google2FA)->getCurrentOtp($secret));
@@ -69,7 +70,7 @@ function tfaFirstStep(object $test): object
 
 function tfaIsOn(object $test): bool
 {
-    return $test->orgContext()->run($test->org->id, fn (): bool => app(MemberTwoFactor::class)->isOn($test->mario->id));
+    return app(OrgContext::class)->run($test->org->id, fn (): bool => app(MemberTwoFactor::class)->isOn($test->mario->id));
 }
 
 it('accesa dal socio: il codice giusto la conferma e consegna 10 codici di riserva di 10 cifre', function (): void {

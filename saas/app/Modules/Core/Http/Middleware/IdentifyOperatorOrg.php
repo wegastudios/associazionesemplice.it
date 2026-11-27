@@ -6,9 +6,9 @@ namespace App\Modules\Core\Http\Middleware;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Access\Memberships;
-use App\Modules\Core\Access\OrgTwoFactor;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgTwoFactor;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\LifecyclePolicy;
 use Closure;

@@ -50,7 +50,7 @@ $memberArea = function (): void {
         Route::post('/esci-ovunque', [AccessController::class, 'logoutAll'])->name('member.logout.all');
         Route::post('/profilo/verifica/accendi', [TwoFactorController::class, 'start'])->middleware('throttle:10,10')->name('member.tfa.start');
         Route::post('/profilo/verifica/conferma', [TwoFactorController::class, 'confirm'])->middleware('throttle:20,10')->name('member.tfa.confirm');
-        Route::post('/profilo/verifica/annulla', [TwoFactorController::class, 'cancel'])->name('member.tfa.cancel');
+        Route::post('/profilo/verifica/annulla', [TwoFactorController::class, 'cancel'])->middleware('throttle:10,10')->name('member.tfa.cancel');
         Route::post('/profilo/verifica/codici', [TwoFactorController::class, 'regenerate'])->middleware('throttle:20,10')->name('member.tfa.regenerate');
         Route::post('/profilo/verifica/spegni', [TwoFactorController::class, 'disable'])->middleware('throttle:20,10')->name('member.tfa.disable');
         Route::get('/risorse', [MemberResourcesController::class, 'index'])->name('member.resources');

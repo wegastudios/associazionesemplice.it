@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Controllers;
 
-use App\Modules\Core\Access\OrgTwoFactor;
+use App\Modules\Core\Contracts\OrgTwoFactor;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;

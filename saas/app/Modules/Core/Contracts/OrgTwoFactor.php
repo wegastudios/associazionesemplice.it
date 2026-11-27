@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Core\Access;
+namespace App\Modules\Core\Contracts;
 
-use App\Modules\Core\Contracts\OrgContext;
-use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Core\Access\Memberships;
 
 /**
  * Verifica in due passaggi per chi lavora nel gestionale (decisione del titolare del 26/11/2026): è una scelta personale,
