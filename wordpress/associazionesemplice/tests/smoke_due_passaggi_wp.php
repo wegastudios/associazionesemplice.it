@@ -179,7 +179,7 @@ $dw_secret = TwoFactor::start_setup( $dw_s );
 TwoFactor::confirm_setup( $dw_s, $dw_at( 180 ) );
 wp_set_current_user( 0 );
 if ( ! class_exists( 'Two_Factor_Core', false ) ) {
-	class_alias( 'stdClass', 'Two_Factor_Core' ); // il plugin «Two Factor» finto: ne basta la classe principale
+	eval( 'class Two_Factor_Core {}' ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- il plugin «Two Factor» finto: ne basta la classe principale (solo nella prova)
 }
 $dw_flags( 1, 1 );
 $dw_co = TwoFactorWp::authenticate( get_userdata( $dw_sec ), 'dw_segreteria', $dw_pw ); // il filtro «authenticate» lascia passare: il secondo passaggio lo chiede l'altro plugin
