@@ -4,7 +4,7 @@
  *     messaggio, il codice giusto (TOTP calcolato qui) fa entrare;
  *  2) obbligo «dipendenti e segreteria»: il dipendente senza verifica va alla pagina di attivazione e non apre altre pagine del pannello;
  *  3) obbligo «soci»: il socio senza verifica vede nell'area soci solo l'attivazione;
- *  4) socia con la verifica: dopo la password la pagina del codice offre «Mandami il link»; dopo il link via email no, e rimanda alla segreteria.
+ *  4) socia con la verifica: la pagina del codice offre «Mandami il link» (con la segreteria come altra via) sia dopo la password sia dopo il link via email.
  * Pagine del codice e dell'attivazione a 1440 e 375 px, con la misura dello scorrimento orizzontale (oltre 0 è un errore) e le schermate.
  * Uso: NODE_PATH=<playwright> node prove-due-passaggi.cjs <sito> <cartella>. Esce con 1 se un controllo non riesce.
  */
@@ -106,7 +106,7 @@ const wrong = (b32) => { const w = new Set([totp(b32, -30), totp(b32, 0), totp(b
     await shots(page, 'area-attivazione');
     await ctx.close();
 
-    // 4) Socia con la verifica: password → «Mandami il link»; link via email → solo segreteria
+    // 4) Socia con la verifica: «Mandami il link» dopo la password e anche dopo il link via email (decisione del titolare «Recupero anche con email»)
     ({ ctx, page } = await fresh());
     await memberLogin(page, data.mem.email, data.mem.pass);
     const t4 = await text(page);
@@ -118,8 +118,10 @@ const wrong = (b32) => { const w = new Set([totp(b32, -30), totp(b32, 0), totp(b
     await page.goto(data.mem.link, { waitUntil: 'load' });
     await Promise.all([page.waitForLoadState('load'), page.locator('button', { hasText: 'Entra' }).first().click()]);
     const t5 = await text(page);
-    ok('area soci, dopo il link via email: niente «Mandami il link», si rimanda alla segreteria', (await page.locator('input[name="tfa_code"]').count()) === 1 && !t5.includes('Mandami il link') && t5.includes('Chiedi alla segreteria di spegnere la verifica'), t5.slice(0, 200));
+    ok('area soci, dopo il link via email: c\'è «Mandami il link», con la segreteria come altra via', (await page.locator('input[name="tfa_code"]').count()) === 1 && t5.includes('Mandami il link') && t5.includes('Oppure chiedi alla segreteria di spegnere la verifica'), t5.slice(0, 200));
     await shots(page, 'soci-codice-link');
+    await Promise.all([page.waitForLoadState('load'), page.locator('button', { hasText: 'Mandami il link' }).click()]);
+    ok('area soci, dopo il link via email: «Mandami il link» risponde e il codice si può ancora scrivere', (await text(page)).includes('Ti abbiamo scritto') && (await page.locator('input[name="tfa_code"]').count()) === 1);
     await page.fill('input[name="tfa_code"]', totp(data.mem.secret));
     await Promise.all([page.waitForLoadState('load'), page.locator('button', { hasText: 'Entra' }).first().click()]);
     ok('area soci: con il codice giusto si entra', (await text(page)).includes('Accesso riuscito') || page.url().startsWith(data.area), page.url());

@@ -215,10 +215,9 @@ final class MemberLoginPage {
 			} elseif ( 'tfa_cancel' === $do ) {
 				TwoFactor::drop_pending();
 			} elseif ( 'tfa_recover' === $do ) {
-				$pend = TwoFactor::pending();
-				TwoFactor::request_recovery(); // rifiuta da sé se il primo passaggio non è stato la password
-				$msg = $pend && TwoFactor::recovery_allowed( $pend ) ? self::TFA_SENT : ''; // anche quando il limite delle email è raggiunto: stessa risposta
-				$err = '' !== $msg ? '' : ( $pend ? TwoFactor::ASK_SECRETARY : self::TFA_EXPIRED );
+				$sent = TwoFactor::request_recovery();
+				$msg  = $sent || TwoFactor::pending() ? self::TFA_SENT : '';
+				$err  = '' === $msg ? self::TFA_EXPIRED : '';
 			} elseif ( 'tfa_off' === $do ) {
 				$msg     = TwoFactor::use_recovery( $tfa_off ) ? 'Verifica in due passaggi spenta. Ora entra come sempre; potrai riaccenderla da «Il mio profilo».' : '';
 				$err     = '' === $msg ? self::TFA_LINK_BAD : '';
@@ -348,15 +347,13 @@ final class MemberLoginPage {
 		$pend = TwoFactor::pending();
 		if ( $pend ) { // primo passaggio fatto: ora il codice dell'app o un codice di riserva
 			list( $input ) = self::style();
-			$by_mail = TwoFactor::recovery_allowed( $pend ); // il link via email solo se il primo passaggio è stato la password
-			$intro   = TwoFactor::needs_reset( (int) $pend['p'] )
-				? '<p style="color:#b32d2e">' . esc_html( $by_mail ? TwoFactor::RESET_MSG : TwoFactor::RESET_MSG_NO_EMAIL ) . '</p>' // segreto illeggibile: solo riserva (o email dopo la password), poi si riaccende
+			$intro = TwoFactor::needs_reset( (int) $pend['p'] )
+				? '<p style="color:#b32d2e">' . esc_html( TwoFactor::RESET_MSG ) . '</p>' // segreto illeggibile: solo riserva o email, poi si riaccende
 				: '<p>Apri l\'app di autenticazione sul telefono e scrivi il codice di 6 cifre che vedi adesso. Se non hai il telefono, scrivi uno dei tuoi codici di riserva.</p>';
-			$lost    = $by_mail
-				? '<div class="n">Hai perso il telefono e i codici di riserva?</div><p>Ti mandiamo un link all\'email della tua scheda: vale ' . (int) ( TwoFactor::RECOVERY_TTL / 60 ) . ' minuti e spegne la verifica in due passaggi.</p>'
-					. self::form( 'tfa_recover', '', 'Mandami il link', false, $back )
-				: '<p>' . esc_html( TwoFactor::ASK_SECRETARY ) . '</p>';
-			$body   .= '<div class="n">Verifica in due passaggi</div>' . $intro
+			$lost  = '<div class="n">Hai perso il telefono e i codici di riserva?</div><p>Ti mandiamo un link all\'email della tua scheda: vale ' . (int) ( TwoFactor::RECOVERY_TTL / 60 ) . ' minuti e spegne la verifica in due passaggi.</p>'
+				. self::form( 'tfa_recover', '', 'Mandami il link', false, $back )
+				. '<p>' . esc_html( TwoFactor::ASK_SECRETARY ) . '</p>';
+			$body .= '<div class="n">Verifica in due passaggi</div>' . $intro
 				. self::form( 'tfa', '<label>Codice<input style="' . $input . '" type="text" name="tfa_code" required autocomplete="one-time-code" inputmode="numeric" maxlength="11" autofocus></label>', 'Entra', false, $back )
 				. $gap . $lost
 				. $gap . self::form( 'tfa_cancel', '', 'Annulla e torna all\'accesso', false, $back );
