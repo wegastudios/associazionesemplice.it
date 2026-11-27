@@ -14741,6 +14741,7 @@ require __DIR__ . '/smoke_moneta.php'; // moneta interna con il nome scelto (di 
 require __DIR__ . '/smoke_mensilita_moneta.php'; // mensilità dei corsi pagate nella moneta interna: per intero, sotto blocco, rimborsi in moneta
 require __DIR__ . '/smoke_corsi_gruppo.php'; // iscrizione ai corsi per più persone: gruppo di richieste, Approva tutte, primo mese a chi iscrive un altro socio, ritiro
 require __DIR__ . '/smoke_due_passaggi.php'; // verifica in due passaggi dell'area soci: codici dell'app e di riserva, login a metà, ripristino via email, limiti
+require __DIR__ . '/smoke_due_passaggi_wp.php'; // verifica in due passaggi degli utenti WordPress, obbligo dell'ente, spegnimento dalla scheda, coesistenza (per ultima: simula un altro plugin)
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

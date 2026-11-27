@@ -106,6 +106,7 @@ final class EmployeesPage {
 			echo '</fieldset><p><button class="button button-primary">Salva</button></p>';
 			Ui::form_close();
 			echo wp_kses( Ui::confirm_button( 'asem_employee_invite', Ui::url( 'asem-employees' ), array( 'user_id' => (int) $u->ID ), 'Rimanda l\'invito', 'Mandare di nuovo a ' . $u->user_email . ' il link per scegliere la password?' ), Html::allowed() );
+			echo wp_kses( TwoFactorPage::user_panel( $u, Ui::url( 'asem-employees' ) ), Html::allowed() ); // verifica in due passaggi: l'amministratore la può spegnere
 			echo '</div>';
 		}
 	}

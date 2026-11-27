@@ -45,6 +45,7 @@ final class Plugin {
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
 		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
+		TwoFactorWp::register(); // verifica in due passaggi degli utenti WordPress e obbligo dell'ente
 		add_action( 'rest_api_init', array( Rest\Api::class, 'routes' ) ); // associazionesemplice/v1: la classe si carica solo per le richieste REST
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
 		if ( '' !== Edition::mismatch() ) { // Associazione Semplice Pro troppo diverso da questo Associazione Semplice: non si carica, e si dice cosa fare

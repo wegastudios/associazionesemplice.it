@@ -96,7 +96,7 @@ $asem_demo_blocked = array(
 	'Nella demo il ripristino di una copia è bloccato.' => array( 'asem_backup_restore' ),
 	'Nella demo l\'importazione da file è bloccata: i dati che vedi sono di esempio.' => array( 'asem_import_preview', 'asem_import_apply', 'asem_import_person', 'asem_import_tx', 'asem_import_undo', 'asem_import_continue', 'asem_import_stop', 'asem_import_language', 'asem_import_texts', 'asem_tec_import' ),
 	'Nella demo i dati non si azzerano da qui: si azzerano da soli ogni notte.' => array( 'asem_reset_all' ),
-	'Nella demo la verifica in due passaggi resta spenta: gli accessi di prova sono condivisi.' => array( 'asem_front_tfa_start', 'asem_front_tfa_confirm' ),
+	'Nella demo la verifica in due passaggi resta spenta: gli accessi di prova sono condivisi.' => array( 'asem_front_tfa_start', 'asem_front_tfa_confirm', 'asem_tfa_wp_start', 'asem_tfa_wp_confirm' ), // anche l'obbligo dell'ente resta spento: sta in Limiti e soglie (asem_save_limits, bloccato qui sopra)
 );
 // Elenco delle azioni PERMESSE (non solo di quelle vietate): ogni azione con prefisso asem_ che arriva da admin-post.php o admin-ajax.php e non è qui sotto si ferma, quindi un'azione
 // nuova di una versione futura del plugin resta chiusa finché non viene riesaminata e aggiunta. Le azioni vietate hanno ciascuna il proprio messaggio.
@@ -192,7 +192,7 @@ $asem_demo_allowed = array_flip( array(
 		'asem_staff', 'asem_statement', 'asem_statement_', 'asem_statement_backfill', 'asem_statement_notes', 'asem_statement_notes_',
 		'asem_statement_snapshot', 'asem_stop_renewal', 'asem_suspend_expired', 'asem_suspend_member', 'asem_suspended', 'asem_tabella_finta',
 		'asem_tax_code', 'asem_tec_import', 'asem_test_gateway', 'asem_test_lock', 'asem_test_newsletter', 'asem_test_sms', 'asem_text_html',
-		'asem_text_plain', 'asem_text_template', 'asem_texts', 'asem_texts_admin_buffer', 'asem_texts_cat_', 'asem_texts_flush', 'asem_ticket', 'asem_todo',
+		'asem_text_plain', 'asem_text_template', 'asem_texts', 'asem_texts_admin_buffer', 'asem_texts_cat_', 'asem_texts_flush', 'asem_tfa_admin_off', 'asem_tfa_wp_cancel', 'asem_tfa_wp_off', 'asem_tfa_wp_regen', 'asem_ticket', 'asem_todo',
 		'asem_transactions', 'asem_transfer_booking', 'asem_treasurer', 'asem_treasurer_sections', 'asem_tx_void_result', 'asem_tx_voided', 'asem_type',
 		'asem_update_account', 'asem_update_api', 'asem_update_check', 'asem_update_hash', 'asem_update_latest', 'asem_update_not_newer',
 		'asem_update_session', 'asem_update_unavailable', 'asem_update_unsigned', 'asem_vapid', 'asem_vat_input', 'asem_vat_row', 'asem_view_activity',

@@ -216,6 +216,10 @@ final class Views {
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
 				: 'Il tuo accesso non è collegato a nessun socio. Scrivi alla segreteria.' ) );
 		}
+		if ( \AssociazioneSemplice\TwoFactorWp::viewer_must_setup() ) { // l'associazione la richiede: prima di tutto il resto si accende la verifica in due passaggi
+			$box = self::section_two_factor( $person );
+			return self::wrap( '' !== $box ? $box : self::notice( \AssociazioneSemplice\TwoFactorWp::MUST_SETUP, 'asemf-err' ) );
+		}
 		return self::wrap( (string) $fn( $person ), $class );
 	}
 
@@ -856,13 +860,15 @@ final class Views {
 	 * codici di riserva, la spegne o rifà i codici con un codice valido. Solo per chi entra con l'accesso proprio.
 	 */
 	public static function section_two_factor( array $p ): string {
-		if ( ! \AssociazioneSemplice\MemberSession::is_own_session() || ! empty( $p['wp_user_id'] ) || ! \AssociazioneSemplice\Plugin::schema_ready() ) {
+		$sub  = \AssociazioneSemplice\TwoFactorWp::viewer_subject(); // la scheda (accesso proprio) o l'utente WordPress di chi guarda
+		$mine = \AssociazioneSemplice\MemberSession::is_own_session() ? $sub === (int) $p['id'] : ( $sub < 0 && (int) ( $p['wp_user_id'] ?? 0 ) === TwoFactor::user_of( $sub ) );
+		if ( 0 === $sub || ! $mine || ! \AssociazioneSemplice\Plugin::schema_ready() ) {
 			return '';
 		}
-		$pid   = (int) $p['id'];
+		$required = \AssociazioneSemplice\TwoFactorWp::subject_required( $sub );
 		$intro = '<p class="asemf-small asemf-muted">Oltre alla password o al link via email, per entrare ti chiediamo un codice che cambia ogni 30 secondi, da un\'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o Aegis). Così nessuno entra con la sola password.</p>';
 		$html  = '<section class="asemf-section asemf-tfa"><h3>Verifica in due passaggi</h3>';
-		$codes = TwoFactor::take_new_codes( $pid );
+		$codes = TwoFactor::take_new_codes( $sub );
 		if ( $codes ) {
 			$list = '';
 			foreach ( $codes as $c ) {
@@ -871,22 +877,22 @@ final class Views {
 			$html .= '<div class="asemf-notice asemf-ok"><p><strong>I tuoi codici di riserva.</strong> Scrivili o stampali e tienili in un posto sicuro: li vedi solo adesso. Se perdi il telefono, ognuno ti fa entrare una volta al posto del codice dell\'app.</p>'
 				. '<ul class="asemf-tfa-codes">' . $list . '</ul></div>';
 		}
-		if ( TwoFactor::is_on( $pid ) && TwoFactor::needs_reset( $pid ) ) { // segreto illeggibile: si spegne con un codice di riserva e si riaccende
+		if ( TwoFactor::is_on( $sub ) && TwoFactor::needs_reset( $sub ) ) { // segreto illeggibile: si spegne con un codice di riserva e si riaccende
 			$html .= '<p class="asemf-notice asemf-err">' . esc_html( TwoFactor::RESET_MSG ) . '</p>'
 				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice di riserva' ), 'Spegni per riaccenderla' );
 			return $html . '</section>';
 		}
-		if ( TwoFactor::is_on( $pid ) ) {
-			$since = TwoFactor::on_since( $pid );
-			$left  = TwoFactor::backup_left( $pid );
+		if ( TwoFactor::is_on( $sub ) ) {
+			$since = TwoFactor::on_since( $sub );
+			$left  = TwoFactor::backup_left( $sub );
 			$html .= '<p>È <strong>accesa</strong>' . ( '' !== $since ? ' dal ' . esc_html( wp_date( 'j/n/Y', (int) strtotime( $since . ' UTC' ) ) ) : '' ) . '. Codici di riserva ancora da usare: <strong>' . (int) $left . '</strong>.</p>'
 				. '<details><summary>Nuovi codici di riserva</summary><p class="asemf-small">I codici di riserva che hai adesso smettono di valere.</p>'
 				. self::form( 'asem_front_tfa_regen', self::tfa_field( 'Codice dell\'app o di riserva' ), 'Crea nuovi codici' ) . '</details>'
-				. '<details><summary>Spegni la verifica in due passaggi</summary>'
-				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice dell\'app o di riserva' ), 'Spegni', 'Spegnere la verifica in due passaggi? Per entrare basterà di nuovo la password o il link via email.' ) . '</details>';
+				. ( $required ? '<p class="asemf-small asemf-muted">L\'associazione richiede la verifica in due passaggi: non si può spegnere.</p>' : '<details><summary>Spegni la verifica in due passaggi</summary>'
+				. self::form( 'asem_front_tfa_off', self::tfa_field( 'Codice dell\'app o di riserva' ), 'Spegni', 'Spegnere la verifica in due passaggi? Per entrare basterà di nuovo la password o il link via email.' ) . '</details>' );
 			return $html . '</section>';
 		}
-		$secret = TwoFactor::pending_secret( $pid );
+		$secret = TwoFactor::pending_secret( $sub );
 		if ( '' !== $secret ) {
 			$issuer = (string) Settings::get( 'association_name' );
 			$issuer = '' !== $issuer ? $issuer : (string) get_bloginfo( 'name' );
@@ -902,7 +908,7 @@ final class Views {
 				. self::form( 'asem_front_tfa_cancel', '', 'Annulla', false, 'asemf-tfa-cancel' );
 			return $html . '</section>';
 		}
-		return $html . '<p>È <strong>spenta</strong>.</p>' . $intro . self::form( 'asem_front_tfa_start', '', 'Accendi la verifica in due passaggi' ) . '</section>';
+		return $html . '<p>È <strong>spenta</strong>.</p>' . ( $required ? '<p><strong>L\'associazione richiede la verifica in due passaggi: accendila per continuare.</strong></p>' : '' ) . $intro . self::form( 'asem_front_tfa_start', '', 'Accendi la verifica in due passaggi' ) . '</section>';
 	}
 
 	// ---------- Gestione degli eventi: prenotati e ingressi ----------
