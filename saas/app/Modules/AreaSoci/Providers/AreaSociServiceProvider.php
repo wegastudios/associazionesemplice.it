@@ -52,6 +52,11 @@ final class AreaSociServiceProvider extends ServiceProvider
             });
         }
 
+        // Verifica in due passaggi dei soci: contatori propri (il «throttle:N,M» semplice conta insieme tutte le rotte dello stesso
+        // dominio e indirizzo, e chi è appena entrato resterebbe bloccato). I codici sbagliati li conta MemberTwoFactor per persona.
+        RateLimiter::for('member-tfa', static fn (Request $request): Limit => Limit::perMinutes(10, 30)->by('member-tfa|'.$request->ip()));
+        RateLimiter::for('member-tfa-reset', static fn (Request $request): Limit => Limit::perHour(5)->by('member-tfa-reset|'.$request->ip()));
+
         // Donazioni dalla pagina pubblica: 10 al minuto dallo stesso indirizzo, 100 all'ora per associazione.
         RateLimiter::for('donations', static function (Request $request): array {
             $slug = $request->route('slug');

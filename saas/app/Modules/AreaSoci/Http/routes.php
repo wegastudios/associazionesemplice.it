@@ -29,10 +29,10 @@ $memberArea = function (): void {
     Route::get('/verifica/{person}', [MemberAreaController::class, 'verify'])->whereUuid('person')->middleware('signed')->name('member.verify');
     // Verifica in due passaggi: il codice dopo il primo passaggio e il ripristino via email (telefono e codici di riserva persi).
     Route::get('/accesso/verifica', [TwoFactorController::class, 'codePage'])->name('member.tfa.code');
-    Route::post('/accesso/verifica', [TwoFactorController::class, 'code'])->middleware('throttle:20,10')->name('member.tfa.code.check');
-    Route::post('/accesso/verifica/ripristino', [TwoFactorController::class, 'requestReset'])->middleware('throttle:5,60')->name('member.tfa.reset.request');
+    Route::post('/accesso/verifica', [TwoFactorController::class, 'code'])->middleware('throttle:member-tfa')->name('member.tfa.code.check');
+    Route::post('/accesso/verifica/ripristino', [TwoFactorController::class, 'requestReset'])->middleware('throttle:member-tfa-reset')->name('member.tfa.reset.request');
     Route::get('/verifica/ripristino/{token}', [TwoFactorController::class, 'resetPage'])->where('token', '[A-Za-z0-9_-]{43}')->name('member.tfa.reset');
-    Route::post('/verifica/ripristino/{token}', [TwoFactorController::class, 'reset'])->where('token', '[A-Za-z0-9_-]{43}')->middleware('throttle:20,10')->name('member.tfa.reset.confirm');
+    Route::post('/verifica/ripristino/{token}', [TwoFactorController::class, 'reset'])->where('token', '[A-Za-z0-9_-]{43}')->middleware('throttle:member-tfa')->name('member.tfa.reset.confirm');
 
     Route::middleware('member')->group(function (): void {
         Route::get('/', [MemberAreaController::class, 'card'])->name('member.home');
@@ -48,11 +48,11 @@ $memberArea = function (): void {
         Route::post('/scheda/{person}', [AccessController::class, 'switch'])->whereUuid('person')->name('member.switch');
         Route::post('/esci', [AccessController::class, 'logout'])->name('member.logout');
         Route::post('/esci-ovunque', [AccessController::class, 'logoutAll'])->name('member.logout.all');
-        Route::post('/profilo/verifica/accendi', [TwoFactorController::class, 'start'])->middleware('throttle:10,10')->name('member.tfa.start');
-        Route::post('/profilo/verifica/conferma', [TwoFactorController::class, 'confirm'])->middleware('throttle:20,10')->name('member.tfa.confirm');
-        Route::post('/profilo/verifica/annulla', [TwoFactorController::class, 'cancel'])->middleware('throttle:10,10')->name('member.tfa.cancel');
-        Route::post('/profilo/verifica/codici', [TwoFactorController::class, 'regenerate'])->middleware('throttle:20,10')->name('member.tfa.regenerate');
-        Route::post('/profilo/verifica/spegni', [TwoFactorController::class, 'disable'])->middleware('throttle:20,10')->name('member.tfa.disable');
+        Route::post('/profilo/verifica/accendi', [TwoFactorController::class, 'start'])->middleware('throttle:member-tfa')->name('member.tfa.start');
+        Route::post('/profilo/verifica/conferma', [TwoFactorController::class, 'confirm'])->middleware('throttle:member-tfa')->name('member.tfa.confirm');
+        Route::post('/profilo/verifica/annulla', [TwoFactorController::class, 'cancel'])->middleware('throttle:member-tfa')->name('member.tfa.cancel');
+        Route::post('/profilo/verifica/codici', [TwoFactorController::class, 'regenerate'])->middleware('throttle:member-tfa')->name('member.tfa.regenerate');
+        Route::post('/profilo/verifica/spegni', [TwoFactorController::class, 'disable'])->middleware('throttle:member-tfa')->name('member.tfa.disable');
         Route::get('/risorse', [MemberResourcesController::class, 'index'])->name('member.resources');
         Route::post('/risorse/{resource}/prenota', [MemberResourcesController::class, 'book'])->whereUuid('resource')->middleware('throttle:member-book')->name('member.resources.book');
         Route::post('/risorse/prenotazioni/{reservation}/annulla', [MemberResourcesController::class, 'cancel'])->whereUuid('reservation')->middleware('throttle:member-cancel')->name('member.resources.cancel');
