@@ -24,6 +24,7 @@ final class Admin {
 		add_action( 'asem_dashboard_alerts', array( YearsPage::class, 'alert' ) ); // avvisi della Bacheca: le classi si leggono solo lì
 		add_action( 'asem_dashboard_alerts', array( RuntsPage::class, 'alerts' ) );
 		add_action( 'wp_dashboard_setup', array( WpDashboard::class, 'setup' ) );
+		add_action( 'show_user_profile', array( TwoFactorPage::class, 'profile_box' ) ); // profilo di WordPress: stato della verifica in due passaggi e collegamento alla pagina
 		add_filter( 'site_status_tests', array( \AssociazioneSemplice\ServerStatus::class, 'health_tests' ) ); // prove nella «Salute del sito» di WordPress (la classe si carica solo lì)
 		if ( Plugin::action_handlers_needed() ) { // solo admin-post.php e admin-ajax.php con un'azione del plugin: niente per le pagine e per il battito
 			self::handlers();
@@ -36,6 +37,7 @@ final class Admin {
 	/** Gestori delle azioni di admin-post.php e admin-ajax.php (ognuno registra solo l'azione chiesta, vedi Plugin::wants_action()). */
 	public static function handlers(): void {
 		EmployeesPage::register(); // prima di Actions::register(): aggiunge le sue azioni
+		TwoFactorPage::register(); // verifica in due passaggi: per sé e, per l'amministratore, dalla scheda
 		Actions::register();
 		Exports::register();
 		IncomePage::register_ajax();
@@ -118,6 +120,7 @@ final class Admin {
 			array( 'asem-activity-delete', 'Elimina l\'evento', array( DeleteActivityPage::class, 'render' ) ),
 			array( 'asem-booking-delete', 'Elimina l\'iscrizione', array( DeleteBookingPage::class, 'render' ) ),
 			array( 'asem-reset', 'Azzeramento dati', array( ResetPage::class, 'render' ) ),
+			array( 'asem-tfa', 'Verifica in due passaggi', array( TwoFactorPage::class, 'render' ) ),
 			array( 'asem-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'asem-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'asem-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),

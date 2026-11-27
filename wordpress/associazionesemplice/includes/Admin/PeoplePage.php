@@ -469,6 +469,7 @@ final class PeoplePage {
 		if ( \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . ( empty( $p['wp_user_id'] ) ? ' · entra con un link o un codice che riceve per email' : '' ) . '</p>';
 			self::detach_buttons( $p );
+			echo wp_kses( TwoFactorPage::person_panel( $p ), Html::allowed() ); // verifica in due passaggi: l'amministratore la può spegnere
 			self::release_panel( $p );
 			echo '</div>';
 			return;

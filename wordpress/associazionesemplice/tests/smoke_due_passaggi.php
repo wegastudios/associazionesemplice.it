@@ -173,6 +173,13 @@ Counters::delete( 'asem_ml_m_' . md5( $dp_addr ) );
 MemberLogin::request( $dp_addr );
 $dp_tok = 1 === preg_match( '/asem_ml=([A-Za-z0-9_-]{43})/', (string) end( $dp_mail )['message'], $dp_mm ) ? $dp_mm[1] : '';
 asem_ok( '' !== $dp_tok && $dp_p === MemberLogin::login_with_token( $dp_tok ) && 0 === $dp_sess() && null !== TwoFactor::pending(), 'due passaggi: anche il link via email si ferma prima della sessione' );
+// Entrato con il link via email: anche così il ripristino via email c'è (decisione del titolare «Recupero anche con email»), con la segreteria come altra via.
+$dp_lpage = MemberLoginPage::page( '', '', '', '', '' );
+$dp_ln    = count( $dp_mail );
+asem_ok( 'link' === TwoFactor::pending()['h'] && false !== strpos( $dp_lpage, 'value="tfa_recover"' ) && false !== strpos( $dp_lpage, 'Oppure chiedi alla segreteria di spegnere la verifica' ), 'due passaggi: entrato con il link via email, il link di ripristino si offre, con la segreteria come altra via' );
+asem_ok( TwoFactor::request_recovery() && count( $dp_mail ) === $dp_ln + 1 && 1 === preg_match( '/asem_tfa_off=([A-Za-z0-9_-]{43})/', (string) end( $dp_mail )['message'], $dp_lm ) && TwoFactor::recovery_valid( $dp_lm[1] ), 'due passaggi: dopo il link via email l\'email di ripristino parte e il suo link vale' );
+Counters::delete( 'asem_tfa_r_' . substr( hash( 'sha256', $dp_lm[1] ), 0, 40 ) ); // qui non si usa: la prova del link che spegne è più avanti
+Counters::delete( 'asem_tfa_rm_' . $dp_p );
 asem_ok( 'ok' === TwoFactor::finish_login( $dp_codes[0] ) && 1 === $dp_sess() && 9 === TwoFactor::backup_left( $dp_p ) && 1 === count( $dp_audit( 'member.tfa_backup_used', $dp_p ) ), 'due passaggi: un codice di riserva fa entrare e si consuma' );
 $dp_out();
 MemberLogin::login_with_password( $dp_addr, $dp_pw );

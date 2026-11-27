@@ -9,6 +9,19 @@ defined( 'ABSPATH' ) || exit;
 /** Impostazioni → Limiti e soglie: ogni limite del plugin con il suo valore predefinito e i rischi di alzarlo o abbassarlo. */
 final class LimitsPage {
 
+	/** Avviso sulla verifica in due passaggi: con un altro plugin attivo ci facciamo da parte per gli utenti WordPress; e cosa vuol dire l'obbligo. */
+	public static function two_factor_note(): string {
+		$other = \AssociazioneSemplice\TwoFactorWp::other_plugin();
+		if ( '' !== $other ) {
+			return '<div class="notice notice-warning inline"><p>' . esc_html(
+				'Verifica in due passaggi: è attivo il plugin «' . $other . '». Per gli utenti WordPress (amministratori, segreteria, dipendenti) la verifica la gestisce quel plugin, e la spunta per dipendenti e segreteria qui sotto non ha effetto. Per i soci che entrano nell\'area soci con email e password o con il link resta quella di Associazione Semplice.'
+			) . '</p></div>';
+		}
+		return '<div class="notice notice-info inline"><p>' . esc_html(
+			'Verifica in due passaggi: ognuno la accende per sé (pannello: pagina «Verifica in due passaggi» dal proprio profilo; soci: «Il mio profilo» nell\'area soci). Con la verifica accesa, o richiesta qui sotto, le password per le applicazioni e XML-RPC di WordPress non funzionano per quell\'utente, perché non chiedono il codice.'
+		) . '</p></div>';
+	}
+
 	public static function render(): void {
 		Ui::header( 'Limiti e soglie' );
 		echo '<p>Qui trovi i limiti, quanti messaggi partono per volta e i comportamenti automatici del gestionale. I <strong>valori predefiniti sono prudenti</strong> e adatti a un sito su un hosting condiviso: '
@@ -16,6 +29,7 @@ final class LimitsPage {
 			. 'Se hai un servizio di invio dedicato, un server più potente o esigenze particolari puoi cambiarli. Ogni valore ha un minimo e un massimo di sicurezza, e sotto ciascuno è spiegato cosa succede se lo alzi o lo abbassi.</p>';
 		echo '<div class="notice notice-info inline"><p><strong>Come regolarti.</strong> Cambia un valore alla volta e osserva per qualche giorno. Alzare un limite non rende il sito più veloce: sposta il rischio dal gestionale al server, al servizio di posta o ai servizi di pagamento. '
 			. 'Abbassarlo aumenta la sicurezza ma può bloccare operazioni legittime. Il pulsante «Ripristina i valori predefiniti» riporta tutto com\'era.</p></div>';
+		echo self::two_factor_note(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- costruito con esc_html
 
 		Ui::form_open( 'asem_save_limits', Ui::url( 'asem-limits' ) );
 		foreach ( Limits::GROUPS as $gk => $gl ) {

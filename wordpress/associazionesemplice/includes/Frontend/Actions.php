@@ -112,6 +112,9 @@ final class Actions {
 				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
 				try {
+					if ( ! in_array( $action, \AssociazioneSemplice\TwoFactorWp::FRONT_SETUP_ACTIONS, true ) && \AssociazioneSemplice\TwoFactorWp::viewer_must_setup() ) {
+						throw new \InvalidArgumentException( \AssociazioneSemplice\TwoFactorWp::MUST_SETUP ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					}
 					self::redirect( $back, self::$method( $post ) );
 				} catch ( \InvalidArgumentException $e ) {
 					self::redirect( $back, '', $e->getMessage() );
@@ -1082,13 +1085,18 @@ final class Actions {
 
 	// ---------- Verifica in due passaggi (da «Il mio profilo») ----------
 
-	/** Chi può usarla: il socio entrato con l'accesso proprio (chi ha un utente WordPress entra da WordPress). */
+	/**
+	 * Di chi è la verifica: la scheda per chi è entrato con l'accesso proprio, l'utente WordPress per il socio entrato da WordPress.
+	 * Restituisce l'attore con «tfa» = il soggetto (vedi TwoFactor::user()).
+	 */
 	private static function tfa_actor(): array {
-		$actor = self::actor();
-		if ( ! \AssociazioneSemplice\MemberSession::is_own_session() || ! empty( $actor['wp_user_id'] ) ) {
-			throw new \InvalidArgumentException( 'La verifica in due passaggi dell\'area soci vale per chi entra con email e password o con il link via email.' );
+		$actor   = self::actor();
+		$subject = \AssociazioneSemplice\TwoFactorWp::viewer_subject();
+		if ( 0 === $subject ) {
+			throw new \InvalidArgumentException( 'La verifica in due passaggi del tuo accesso la gestisce un altro plugin del sito.' );
 		}
 		\AssociazioneSemplice\MemberThrottle::hit( 'profile', (int) $actor['id'], 'member_profile_per_10min' );
+		$actor['tfa'] = $subject;
 		return $actor;
 	}
 
@@ -1098,30 +1106,34 @@ final class Actions {
 
 	/** Inizia l'accensione: compare il QR da inquadrare con l'app. */
 	public static function do_tfa_start( array $post ): string {
-		\AssociazioneSemplice\TwoFactor::start_setup( (int) self::tfa_actor()['id'] );
+		\AssociazioneSemplice\TwoFactor::start_setup( (int) self::tfa_actor()['tfa'] );
 		return 'Inquadra il codice QR con l\'app e scrivi il codice che compare per confermare.';
 	}
 
 	/** Conferma con il primo codice: la verifica si accende e compaiono, una volta sola, i codici di riserva. */
 	public static function do_tfa_confirm( array $post ): string {
-		\AssociazioneSemplice\TwoFactor::confirm_setup( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		\AssociazioneSemplice\TwoFactor::confirm_setup( (int) self::tfa_actor()['tfa'], self::tfa_code( $post ) );
 		return 'Verifica in due passaggi accesa. Salva ora i codici di riserva: non li vedrai più.';
 	}
 
 	public static function do_tfa_cancel( array $post ): string {
-		\AssociazioneSemplice\TwoFactor::cancel_setup( (int) self::tfa_actor()['id'] );
+		\AssociazioneSemplice\TwoFactor::cancel_setup( (int) self::tfa_actor()['tfa'] );
 		return 'Accensione annullata: la verifica in due passaggi resta spenta.';
 	}
 
 	/** Spegne: serve un codice valido dell'app o di riserva. */
 	public static function do_tfa_off( array $post ): string {
-		\AssociazioneSemplice\TwoFactor::turn_off( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		$subject = (int) self::tfa_actor()['tfa'];
+		if ( \AssociazioneSemplice\TwoFactorWp::subject_required( $subject ) && ! \AssociazioneSemplice\TwoFactor::needs_reset( $subject ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\TwoFactorWp::CANT_OFF ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		\AssociazioneSemplice\TwoFactor::turn_off( $subject, self::tfa_code( $post ) );
 		return 'Verifica in due passaggi spenta.';
 	}
 
 	/** Nuovi codici di riserva: i vecchi smettono di valere. */
 	public static function do_tfa_regen( array $post ): string {
-		\AssociazioneSemplice\TwoFactor::regenerate_backup( (int) self::tfa_actor()['id'], self::tfa_code( $post ) );
+		\AssociazioneSemplice\TwoFactor::regenerate_backup( (int) self::tfa_actor()['tfa'], self::tfa_code( $post ) );
 		return 'Nuovi codici di riserva pronti: salvali ora, quelli vecchi non valgono più.';
 	}
 

@@ -280,6 +280,18 @@ final class Limits {
 			'Chi scarica molte ricevute insieme potrebbe dover aspettare qualche minuto.'
 		);
 		$add(
+			'tfa_required_staff', 'accesso', 'Richiedi la verifica in due passaggi a dipendenti e segreteria', 'flag', 0, 0, 1,
+			'Chi lavora nel pannello (segreteria, dipendenti, presidente e vicepresidente con utente) deve accendere la verifica in due passaggi: al primo ingresso va subito alla pagina per accenderla e non usa il pannello finché non l\'ha confermata. L\'amministratore di WordPress segue le regole di WordPress e non è toccato da questa scelta.',
+			'Più sicurezza: con la sola password rubata nessuno entra nel pannello. Ognuno deve avere un\'app sul telefono e conservare i codici di riserva.',
+			'Ognuno decide da sé: chi non la accende entra con la sola password.'
+		);
+		$add(
+			'tfa_required_members', 'accesso', 'Richiedi la verifica in due passaggi ai soci', 'flag', 0, 0, 1,
+			'Ogni socio deve accendere la verifica in due passaggi per l\'area soci: al primo ingresso vede solo la pagina per accenderla e non usa l\'area soci finché non l\'ha confermata.',
+			'Più sicurezza per i dati dei soci, ma ogni socio deve avere un\'app sul telefono: chi non ce l\'ha non entra più nell\'area soci.',
+			'Ogni socio decide da sé, come all\'inizio.'
+		);
+		$add(
 			'member_tfa_fail_per_10min', 'accesso', 'Codici sbagliati della verifica in due passaggi, per socio, ogni 10 minuti', 'tentativi', 5, 3, 30,
 			'Quante volte un socio può sbagliare il codice dell\'app o un codice di riserva prima di dover aspettare 10 minuti. Ferma chi conosce la password e prova a indovinare il codice.',
 			'Un valore alto dà più tentativi a chi prova a indovinare il codice.',

@@ -15,6 +15,10 @@ defined( 'ABSPATH' ) || exit;
  * Al login la sessione non si apre subito: un cookie breve ({@see self::COOKIE}) ricorda chi ha superato il primo passaggio, e la pagina di
  * accesso chiede il codice. Chi ha perso il telefono usa un codice di riserva o si fa mandare per email un link (15 minuti, una volta sola)
  * che spegne la verifica; alla segreteria parte un avviso.
+ *
+ * «Soggetto» della verifica: la scheda di una persona (id positivo, colonne tfa_* di people) oppure un utente WordPress (id negativo, vedi
+ * {@see self::user()}: le stesse quattro informazioni nelle usermeta asem_tfa_*, cancellate da WordPress insieme all'utente). Il login di WordPress
+ * e l'obbligo dell'ente stanno in {@see TwoFactorWp}.
  */
 final class TwoFactor {
 
@@ -192,6 +196,88 @@ final class TwoFactor {
 		return wp_salt( 'auth' ); // come le chiavi dei pagamenti
 	}
 
+	/** Usermeta di un utente WordPress, colonna => chiave. */
+	const META = array(
+		'tfa_secret'    => 'asem_tfa_secret',
+		'tfa_backup'    => 'asem_tfa_backup',
+		'tfa_on_at'     => 'asem_tfa_on_at',
+		'tfa_last_step' => 'asem_tfa_last_step',
+	);
+
+	/** Il soggetto di un utente WordPress (numero negativo: non si confonde mai con una scheda). */
+	public static function user( int $user_id ): int {
+		return -abs( $user_id );
+	}
+
+	/** L'utente WordPress di un soggetto, 0 se è una scheda. */
+	public static function user_of( int $subject ): int {
+		return $subject < 0 ? -$subject : 0;
+	}
+
+	/** Riga del registro azioni: «member.tfa_…» sulla scheda, «user.tfa_…» sull'utente WordPress. */
+	private static function log( int $subject, string $what, array $details = array() ): void {
+		if ( $subject < 0 ) {
+			Audit::log( 'user.' . $what, 'user', -$subject, $details );
+			return;
+		}
+		Audit::log( 'member.' . $what, 'person', $subject, $details );
+	}
+
+	/** Le quattro informazioni del soggetto, come colonne (null dove non ci sono). @return array<string,mixed>|null */
+	private static function row( int $subject ): ?array {
+		if ( $subject > 0 ) {
+			if ( ! Plugin::schema_ready() ) {
+				return null;
+			}
+			$db = Db::db();
+			$r  = $db->get_row( $db->prepare( 'SELECT tfa_secret, tfa_backup, tfa_on_at, tfa_last_step FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $subject ), ARRAY_A );
+			return $r ?: null;
+		}
+		$uid = self::user_of( $subject );
+		if ( $uid <= 0 ) {
+			return null;
+		}
+		$out = array();
+		foreach ( self::META as $col => $key ) {
+			$v           = get_user_meta( $uid, $key, true );
+			$out[ $col ] = '' === $v || false === $v ? null : $v;
+		}
+		return $out;
+	}
+
+	/** Scrive le informazioni date (null = toglie). */
+	private static function write( int $subject, array $fields ): void {
+		if ( $subject > 0 ) {
+			Db::db()->update( Db::t( 'people' ), $fields, array( 'id' => $subject ) );
+			return;
+		}
+		$uid = self::user_of( $subject );
+		foreach ( $fields as $col => $v ) {
+			if ( ! isset( self::META[ $col ] ) ) {
+				continue;
+			}
+			if ( null === $v ) {
+				delete_user_meta( $uid, self::META[ $col ] );
+			} else {
+				update_user_meta( $uid, self::META[ $col ], (string) $v );
+			}
+		}
+	}
+
+	/** Aggiorna una colonna solo se la condizione vale ancora, con una sola istruzione. @return bool true se ha vinto questa richiesta */
+	private static function write_if( int $subject, string $col, string $value, string $cond_sql, $cond_value ): bool {
+		$db = Db::db();
+		if ( $subject > 0 ) {
+			$tbl = Db::t( 'people' );
+			return 1 === (int) $db->query( $db->prepare( "UPDATE $tbl SET $col = %s WHERE id = %d AND $col $cond_sql", $value, $subject, $cond_value ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- colonna e confronto scritti nel codice
+		}
+		$uid  = self::user_of( $subject );
+		$expr = 'tfa_last_step' === $col ? 'CAST(meta_value AS UNSIGNED)' : 'meta_value';
+		$won  = 1 === (int) $db->query( $db->prepare( "UPDATE {$db->usermeta} SET meta_value = %s WHERE user_id = %d AND meta_key = %s AND $expr $cond_sql", $value, $uid, self::META[ $col ], $cond_value ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- confronto scritto nel codice
+		wp_cache_delete( $uid, 'user_meta' );
+		return $won;
+	}
+
 	/**
 	 * «on» = accesa (tfa_on_at valorizzato), anche se il segreto non si legge più: in quel caso «unreadable» è vero, il codice dell'app non si può
 	 * controllare e il login si ferma comunque sulla pagina del codice (mai aperto con il solo primo passaggio): si entra con un codice di riserva
@@ -200,8 +286,7 @@ final class TwoFactor {
 	 * @return array{secret:string,on:bool,unreadable:bool,backup:array,backup_raw:string,last_step:int,on_at:string}
 	 */
 	private static function state( int $person_id ): array {
-		$db  = Db::db();
-		$r   = $person_id > 0 && Plugin::schema_ready() ? $db->get_row( $db->prepare( 'SELECT tfa_secret, tfa_backup, tfa_on_at, tfa_last_step FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $person_id ), ARRAY_A ) : null;
+		$r   = 0 !== $person_id ? self::row( $person_id ) : null;
 		$enc = $r ? (string) $r['tfa_secret'] : '';
 		$sec = '' !== $enc ? (string) Secrets::decrypt( $enc, self::secret_key() ) : '';
 		$bk  = $r && '' !== (string) $r['tfa_backup'] ? json_decode( (string) $r['tfa_backup'], true ) : array();
@@ -218,12 +303,12 @@ final class TwoFactor {
 
 	/** La persona ha la verifica in due passaggi accesa? */
 	public static function is_on( int $person_id ): bool {
-		return $person_id > 0 && self::state( $person_id )['on'];
+		return 0 !== $person_id && self::state( $person_id )['on'];
 	}
 
 	/** Accesa ma con il segreto illeggibile (salt cambiati, trasloco, dato rovinato): va riconfigurata, si entra con un codice di riserva o con l'email. */
 	public static function needs_reset( int $person_id ): bool {
-		return $person_id > 0 && self::state( $person_id )['unreadable'];
+		return 0 !== $person_id && self::state( $person_id )['unreadable'];
 	}
 
 	/** Da quando è accesa (UTC), vuoto se spenta. */
@@ -257,8 +342,8 @@ final class TwoFactor {
 			return $s['secret'];
 		}
 		$secret = self::new_secret();
-		Db::db()->update( Db::t( 'people' ), array( 'tfa_secret' => Secrets::encrypt( $secret, self::secret_key() ), 'tfa_backup' => null, 'tfa_on_at' => null, 'tfa_last_step' => 0 ), array( 'id' => $person_id ) );
-		Audit::log( 'member.tfa_setup_started', 'person', $person_id );
+		self::write( $person_id, array( 'tfa_secret' => Secrets::encrypt( $secret, self::secret_key() ), 'tfa_backup' => null, 'tfa_on_at' => null, 'tfa_last_step' => 0 ) );
+		self::log( $person_id, 'tfa_setup_started' );
 		return $secret;
 	}
 
@@ -268,7 +353,7 @@ final class TwoFactor {
 			return;
 		}
 		self::forget( $person_id );
-		Audit::log( 'member.tfa_setup_cancelled', 'person', $person_id );
+		self::log( $person_id, 'tfa_setup_cancelled' );
 	}
 
 	/** Chiave del contatore dei codici sbagliati di una persona (finestra di 10 minuti). */
@@ -288,7 +373,7 @@ final class TwoFactor {
 
 	private static function count_fail( int $person_id, string $where ): void {
 		MemberThrottle::add( self::fail_key( $person_id ), MemberThrottle::WINDOW );
-		Audit::log( 'member.tfa_failed', 'person', $person_id, array( 'where' => $where ) );
+		self::log( $person_id, 'tfa_failed', array( 'where' => $where ) );
 	}
 
 	/** Messaggio quando si è superato il limite. */
@@ -312,9 +397,9 @@ final class TwoFactor {
 			throw new \InvalidArgumentException( 'Il codice non è corretto. Controlla che l\'ora del telefono sia giusta e scrivi il codice che vedi adesso nell\'app.' );
 		}
 		$codes = self::new_backup_codes();
-		Db::db()->update( Db::t( 'people' ), array( 'tfa_on_at' => gmdate( 'Y-m-d H:i:s', self::now() ), 'tfa_last_step' => $step, 'tfa_backup' => self::hash_all( $codes ) ), array( 'id' => $person_id ) );
+		self::write( $person_id, array( 'tfa_on_at' => gmdate( 'Y-m-d H:i:s', self::now() ), 'tfa_last_step' => $step, 'tfa_backup' => self::hash_all( $codes ) ) );
 		Counters::delete( self::fail_key( $person_id ) );
-		Audit::log( 'member.tfa_on', 'person', $person_id );
+		self::log( $person_id, 'tfa_on' );
 		self::keep_for_showing( $person_id, $codes );
 		return $codes;
 	}
@@ -338,13 +423,11 @@ final class TwoFactor {
 		if ( ! $s['on'] ) {
 			return 'wrong';
 		}
-		$db   = Db::db();
-		$tbl  = Db::t( 'people' );
 		$norm = self::normalize( $code );
 		if ( self::DIGITS === strlen( $norm ) ) {
 			$step = self::match_step( $s['secret'], $norm, self::now(), $s['last_step'] );
 			// Il passo si segna con una sola istruzione: due richieste con lo stesso codice non passano tutte e due.
-			if ( null !== $step && 1 === (int) $db->query( $db->prepare( "UPDATE $tbl SET tfa_last_step = %d WHERE id = %d AND tfa_last_step < %d", $step, $person_id, $step ) ) ) {
+			if ( null !== $step && self::write_if( $person_id, 'tfa_last_step', (string) $step, '< %d', $step ) ) {
 				Counters::delete( self::fail_key( $person_id ) );
 				return 'ok';
 			}
@@ -353,13 +436,12 @@ final class TwoFactor {
 			if ( null !== $i ) {
 				$left = $s['backup'];
 				array_splice( $left, $i, 1 );
-				$won = $db->query( $db->prepare( "UPDATE $tbl SET tfa_backup = %s WHERE id = %d AND tfa_backup = %s", (string) wp_json_encode( array_values( $left ) ), $person_id, $s['backup_raw'] ) );
-				if ( 1 === (int) $won ) {
+				if ( self::write_if( $person_id, 'tfa_backup', (string) wp_json_encode( array_values( $left ) ), '= %s', $s['backup_raw'] ) ) {
 					Counters::delete( self::fail_key( $person_id ) );
-					Audit::log( 'member.tfa_backup_used', 'person', $person_id, array( 'left' => count( $left ) ) );
+					self::log( $person_id, 'tfa_backup_used', array( 'left' => count( $left ) ) );
 					if ( $s['unreadable'] ) { // segreto illeggibile: entrato con la riserva, la verifica si spegne e il socio la riaccende da «Il mio profilo»
 						self::forget( $person_id );
-						Audit::log( 'member.tfa_off', 'person', $person_id, array( 'how' => 'unreadable_backup' ) );
+						self::log( $person_id, 'tfa_off', array( 'how' => 'unreadable_backup' ) );
 					}
 					return 'ok';
 				}
@@ -371,6 +453,9 @@ final class TwoFactor {
 
 	/** Messaggio per il segreto illeggibile. */
 	const RESET_MSG = 'La verifica in due passaggi va riconfigurata: il codice dell\'app non si può più controllare. Usa un codice di riserva oppure il link via email, poi riaccendila da «Il mio profilo».';
+
+	/** Aggiunta sotto il link via email: l'altra via, per chi preferisce. */
+	const ASK_SECRETARY = 'Oppure chiedi alla segreteria di spegnere la verifica.';
 
 	/** Messaggio unico per un codice che non va. */
 	const WRONG_MSG = 'Il codice non è corretto o è già stato usato. Scrivi il codice che vedi adesso nell\'app, oppure un codice di riserva.';
@@ -393,7 +478,7 @@ final class TwoFactor {
 		}
 		self::require_code( $person_id, $code, 'off' );
 		self::forget( $person_id );
-		Audit::log( 'member.tfa_off', 'person', $person_id, array( 'how' => 'code' ) );
+		self::log( $person_id, 'tfa_off', array( 'how' => 'code' ) );
 	}
 
 	/** Nuovi codici di riserva al posto dei vecchi (che smettono di valere): serve un codice valido. @return string[] @throws \InvalidArgumentException */
@@ -406,19 +491,42 @@ final class TwoFactor {
 		}
 		self::require_code( $person_id, $code, 'regen' );
 		$codes = self::new_backup_codes();
-		Db::db()->update( Db::t( 'people' ), array( 'tfa_backup' => self::hash_all( $codes ) ), array( 'id' => $person_id ) );
-		Audit::log( 'member.tfa_backup_regenerated', 'person', $person_id );
+		self::write( $person_id, array( 'tfa_backup' => self::hash_all( $codes ) ) );
+		self::log( $person_id, 'tfa_backup_regenerated' );
 		self::keep_for_showing( $person_id, $codes );
 		return $codes;
 	}
 
 	/** Svuota tutto (spegnimento, cancellazione e anonimizzazione della persona). */
 	public static function forget( int $person_id ): void {
-		if ( ! Plugin::schema_ready() ) {
+		if ( 0 === $person_id || ( $person_id > 0 && ! Plugin::schema_ready() ) ) {
 			return;
 		}
-		Db::db()->update( Db::t( 'people' ), array( 'tfa_secret' => null, 'tfa_backup' => null, 'tfa_on_at' => null, 'tfa_last_step' => 0 ), array( 'id' => $person_id ) );
+		self::write( $person_id, $person_id > 0 ? array( 'tfa_secret' => null, 'tfa_backup' => null, 'tfa_on_at' => null, 'tfa_last_step' => 0 ) : array_fill_keys( array_keys( self::META ), null ) );
 		Counters::delete( self::show_key( $person_id ) );
+	}
+
+	/**
+	 * L'amministratore la spegne dalla scheda (telefono perso, codici finiti): registro ed email all'interessato. Con l'obbligo dell'ente acceso
+	 * l'interessato la deve riaccendere al prossimo ingresso. Nessuno la spegne a sé stesso così: per sé si usa il proprio profilo, con un codice.
+	 *
+	 * @param string $email indirizzo a cui avvisare (vuoto = nessuna email)
+	 * @return bool true se era accesa
+	 */
+	public static function admin_off( int $subject, int $by_user, string $email, string $first_name ): bool {
+		if ( ! self::is_on( $subject ) ) {
+			return false;
+		}
+		self::forget( $subject );
+		self::log( $subject, 'tfa_off', array( 'how' => 'admin', 'by' => $by_user ) );
+		if ( is_email( $email ) ) {
+			ResponseMail::send(
+				$email,
+				Texts::subject( 'La verifica in due passaggi è stata spenta' ),
+				'Ciao ' . $first_name . ",\n\nl'amministratore ha spento la verifica in due passaggi del tuo accesso. Per entrare ora basta la password (o il link via email). Puoi riaccenderla quando vuoi; se l'associazione la richiede, ti verrà chiesto di riaccenderla al prossimo ingresso.\n\nSe non l'hai chiesto tu, scrivi subito alla segreteria."
+			);
+		}
+		return true;
 	}
 
 	// ---------- I codici di riserva appena creati: si vedono una volta sola ----------
@@ -480,9 +588,9 @@ final class TwoFactor {
 		$raw = SessionToken::generate();
 		Counters::set( self::pending_key( $raw ), array( 'p' => $person_id, 'r' => $remember ? 1 : 0, 'h' => substr( sanitize_key( $how ), 0, 20 ) ), self::PENDING_TTL );
 		self::set_cookie( $raw, time() + self::PENDING_TTL );
-		Audit::log( 'member.tfa_asked', 'person', $person_id, array( 'how' => $how ) );
+		self::log( $person_id, 'tfa_asked', array( 'how' => $how ) );
 		if ( self::needs_reset( $person_id ) ) { // segreto illeggibile: niente sessione con il solo primo passaggio, resta scritto
-			Audit::log( 'member.tfa_unreadable', 'person', $person_id, array( 'how' => $how ) );
+			self::log( $person_id, 'tfa_unreadable', array( 'how' => $how ) );
 		}
 	}
 

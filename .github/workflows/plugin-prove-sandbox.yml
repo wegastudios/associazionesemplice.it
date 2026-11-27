@@ -152,6 +152,33 @@ jobs:
           cat ../../uscita/esito.md >> "$GITHUB_STEP_SUMMARY" || true
           exit $rc
 
+      # Verifica in due passaggi nel browser: login di WordPress con il codice, obbligo dell'ente (dipendente e socio all'attivazione), pagina del codice
+      # dei soci con e senza il link via email; pagine a 1440 e 375 px senza scorrimento orizzontale. Utenti e segreti di prova di wp-env, tolti dall'artefatto.
+      - name: Verifica in due passaggi nel browser
+        if: always()
+        shell: bash
+        working-directory: wordpress/dist
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          wpc() { npx --yes @wordpress/env run cli wp "$@"; }
+          mkdir -p ../../due-passaggi
+          wpc eval-file wp-content/sandbox-scripts/prepara-due-passaggi.php | tr -d '\r' | grep '^{' | tail -1 > ../../due-passaggi/dati.json
+          rc=0
+          node ../../.github/scripts/prove-due-passaggi.cjs http://localhost:8888 ../../due-passaggi || rc=1
+          wpc eval '$l = (array) \AssociazioneSemplice\Settings::get( "limits" ); unset( $l["tfa_required_staff"], $l["tfa_required_members"] ); \AssociazioneSemplice\Settings::update( array( "limits" => $l ) );'
+          rm -f ../../due-passaggi/dati.json # accessi e segreti di prova: non vanno nell'artefatto
+          cat ../../due-passaggi/esito.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit $rc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verifica-due-passaggi
+          path: due-passaggi/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
